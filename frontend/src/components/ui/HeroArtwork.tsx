@@ -1,4 +1,4 @@
-import { type SVGProps } from "react";
+import { useState, useCallback, useRef, type SVGProps, type PointerEvent } from "react";
 
 interface HeroArtworkProps extends SVGProps<SVGSVGElement> {
   className?: string;
@@ -15,8 +15,59 @@ interface HeroArtworkProps extends SVGProps<SVGSVGElement> {
  * Warm Marigold (#E9A83A), Burnt Amber (#B96D2B), and Warm Ivory (#FAF8F3).
  */
 export function HeroArtwork({ className = "", ...props }: HeroArtworkProps) {
+  const [tilt, setTilt] = useState({ rx: 0, ry: 0, px: 50, py: 50, isHovered: false });
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  const handlePointerMove = useCallback((e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "touch") return;
+    if (typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    const el = wrapRef.current;
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+
+    const dx = Math.max(-1, Math.min(1, (x - cx) / cx));
+    const dy = Math.max(-1, Math.min(1, (y - cy) / cy));
+    const px = Math.round((x / rect.width) * 100);
+    const py = Math.round((y / rect.height) * 100);
+
+    setTilt({
+      rx: -dy * 9.5,
+      ry: dx * 9.5,
+      px,
+      py,
+      isHovered: true,
+    });
+  }, []);
+
+  const handlePointerLeave = useCallback(() => {
+    setTilt({ rx: 0, ry: 0, px: 50, py: 50, isHovered: false });
+  }, []);
+
   return (
-    <div className={`hero-artwork-wrap ${className}`.trim()}>
+    <div
+      ref={wrapRef}
+      className={`hero-artwork-wrap ${className}`.trim()}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+      style={{
+        transform: tilt.isHovered
+          ? `perspective(1100px) rotateX(${tilt.rx.toFixed(2)}deg) rotateY(${tilt.ry.toFixed(2)}deg) translateZ(10px)`
+          : undefined,
+      }}
+    >
+      {/* Soft Radial Ambient Lighting — Natural Circular Halo */}
+      <div className="hero-artwork-ambient-glow" aria-hidden="true" />
+
+      {/* Floating Ground Shadow Plinth */}
+      <div className="hero-artwork-ground-shadow" aria-hidden="true" />
       <svg
         viewBox="0 0 600 500"
         fill="none"
@@ -27,7 +78,7 @@ export function HeroArtwork({ className = "", ...props }: HeroArtworkProps) {
         {...props}
       >
         <defs>
-          {/* Subtle Ambient Radial Glow */}
+          {/* Subtle Ambient Radial Glow with Smooth Seamless Falloff */}
           <radialGradient
             id="ambientGlow"
             cx="50%"
@@ -36,9 +87,10 @@ export function HeroArtwork({ className = "", ...props }: HeroArtworkProps) {
             fx="50%"
             fy="42%"
           >
-            <stop offset="0%" stopColor="#E9A83A" stopOpacity="0.24" />
-            <stop offset="50%" stopColor="#FAF8F3" stopOpacity="0.08" />
-            <stop offset="100%" stopColor="#FAF8F3" stopOpacity="0" />
+            <stop offset="0%" stopColor="#E9A83A" stopOpacity="0.16" />
+            <stop offset="40%" stopColor="#E9A83A" stopOpacity="0.05" />
+            <stop offset="75%" stopColor="#E9A83A" stopOpacity="0" />
+            <stop offset="100%" stopColor="#E9A83A" stopOpacity="0" />
           </radialGradient>
 
           {/* Deep Aubergine Facet Gradient */}
@@ -93,6 +145,42 @@ export function HeroArtwork({ className = "", ...props }: HeroArtworkProps) {
               floodOpacity="0.13"
             />
           </filter>
+
+          {/* Enhanced 3D Multi-Layer Architectural Shadow */}
+          <filter id="heroShadow3D" x="-20%" y="-20%" width="145%" height="150%">
+            <feDropShadow
+              dx="0"
+              dy="22"
+              stdDeviation="26"
+              floodColor="#29152F"
+              floodOpacity="0.22"
+            />
+            <feDropShadow
+              dx="0"
+              dy="8"
+              stdDeviation="10"
+              floodColor="#B96D2B"
+              floodOpacity="0.12"
+            />
+          </filter>
+
+          {/* Core Polyhedron Radiant Ambient Glow & Depth */}
+          <filter id="coreDepthGlow" x="-25%" y="-25%" width="150%" height="150%">
+            <feDropShadow
+              dx="0"
+              dy="16"
+              stdDeviation="20"
+              floodColor="#29152F"
+              floodOpacity="0.24"
+            />
+            <feDropShadow
+              dx="0"
+              dy="4"
+              stdDeviation="8"
+              floodColor="#E9A83A"
+              floodOpacity="0.28"
+            />
+          </filter>
         </defs>
 
         {/* Ambient Warm Atmosphere */}
@@ -110,7 +198,7 @@ export function HeroArtwork({ className = "", ...props }: HeroArtworkProps) {
         </g>
 
         {/* Layered Architectural Folios (Metaphor: Structured Foundations) */}
-        <g filter="url(#heroShadow)" className="floating-folio-group">
+        <g filter="url(#heroShadow3D)" className="floating-folio-group">
           {/* Base Lower Folio / Page 1 — Spanning 500px across the viewport */}
           <polygon
             points="50,330 300,402 550,330 300,268"
@@ -168,7 +256,7 @@ export function HeroArtwork({ className = "", ...props }: HeroArtworkProps) {
         </g>
 
         {/* Central Geometric Knowledge Core (Aubergine + Marigold Faceted Polyhedron) */}
-        <g className="sculpture-core" filter="url(#heroShadow)">
+        <g className="sculpture-core" filter="url(#coreDepthGlow)">
           {/* Left Aubergine Shadow Face */}
           <polygon
             points="300,55 175,185 300,285 300,55"

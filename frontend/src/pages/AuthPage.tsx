@@ -144,8 +144,10 @@ export default function AuthPage({
           <div className="eyebrow">AI-POWERED GAMIFIED LEARNING</div>
 
           <h1 className="hero-headline">
-            Learn by doing. <br />
-            Grow by <em>proving.</em>
+            <span className="hero-headline-line">Learn by doing.</span>
+            <span className="hero-headline-line">
+              Grow by <em>proving.</em>
+            </span>
           </h1>
 
           <p className="hero-lead">
