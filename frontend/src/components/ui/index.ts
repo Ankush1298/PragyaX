@@ -7,3 +7,4 @@ export { Alert } from "./Alert";
 export { LoadingState } from "./LoadingState";
 export { EmptyState } from "./EmptyState";
 export { HeroArtwork } from "./HeroArtwork";
+export { ProductPreview } from "./ProductPreview";

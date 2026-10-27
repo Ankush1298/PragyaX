@@ -1,0 +1,95 @@
+-- ============================================================================
+-- PragyaX Production Role & Permission Provisioning Review Template
+-- Target: Staging / Production Supabase PostgreSQL (Post-CR-15 Gate)
+-- File: database/validation/step27/03_production_permission_template.sql
+-- 
+-- STATUS: NON-EXECUTABLE TEMPLATE FOR REVIEW ONLY
+-- DO NOT EXECUTE DIRECTLY. MUST BE REVIEWED AND APPROVED BY ANKUSH & ARSH.
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- ARCHITECTURAL PRINCIPLES:
+-- 1. LEAST PRIVILEGE: The FastAPI application MUST NOT connect as 'postgres'
+--    or any role possessing SUPERUSER or BYPASSRLS.
+-- 2. NO auth.uid() DEPENDENCY: PragyaX uses internal session bearer tokens
+--    (usr_<hex12>), NOT Supabase Auth GoTrue JWTs. Database RLS cannot inspect
+--    auth.uid() because auth.uid() evaluates to NULL for custom bearer sessions.
+-- 3. MULTI-TENANT ISOLATION: Authorization boundaries (user_id == current_user.id)
+--    are strictly enforced server-side at the FastAPI router/service layer.
+-- 4. TABLE-SPECIFIC DML GRANTS: Standard domain tables receive CRUD permissions;
+--    gamification ledger tables receive append-only permissions (SELECT, INSERT only).
+-- ----------------------------------------------------------------------------
+
+-- [REVIEW ITEM 1]: Create Dedicated Application Role
+-- Replace 'STRONG_PRODUCTION_PASSWORD_HERE' with a cryptographically generated secret.
+-- CREATE ROLE pragyax_backend_app WITH LOGIN PASSWORD 'STRONG_PRODUCTION_PASSWORD_HERE';
+
+-- [REVIEW ITEM 2]: Grant Database Connect & Schema Usage
+-- GRANT CONNECT ON DATABASE postgres TO pragyax_backend_app;
+-- GRANT USAGE ON SCHEMA public TO pragyax_backend_app;
+
+-- [REVIEW ITEM 3]: Table-Specific Operational Grants (CRUD)
+-- Standard operational tables required by FastAPI routers for normal learner flow.
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.users TO pragyax_backend_app;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_preferences TO pragyax_backend_app;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.subjects TO pragyax_backend_app;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.assessment_questions TO pragyax_backend_app;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.chat_messages TO pragyax_backend_app;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.assessment_attempts TO pragyax_backend_app;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.daily_challenges TO pragyax_backend_app;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_challenge_submissions TO pragyax_backend_app;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_badges TO pragyax_backend_app;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.active_sessions TO pragyax_backend_app;
+-- GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_roadmap_progress TO pragyax_backend_app;
+
+-- [REVIEW ITEM 4]: Append-Only Ledger Grants (SELECT & INSERT Only)
+-- UPDATE and DELETE permissions are strictly withheld to preserve financial-grade XP auditability.
+-- GRANT SELECT, INSERT ON TABLE public.points_ledger TO pragyax_backend_app;
+-- GRANT SELECT, INSERT ON TABLE public.points_ledger_revocations TO pragyax_backend_app;
+
+-- [REVIEW ITEM 5]: Scoped Service RLS Policies for pragyax_backend_app
+-- Because migrations 0003, 0005, and 0006 enabled RLS on all public tables, non-owner
+-- roles lacking BYPASSRLS require explicit policies to perform authorized operations.
+--
+-- CREATE POLICY app_service_users ON public.users
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_user_preferences ON public.user_preferences
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_subjects ON public.subjects
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_assessment_questions ON public.assessment_questions
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_chat_messages ON public.chat_messages
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_assessment_attempts ON public.assessment_attempts
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_daily_challenges ON public.daily_challenges
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_user_challenge_submissions ON public.user_challenge_submissions
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_user_badges ON public.user_badges
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_active_sessions ON public.active_sessions
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_user_roadmap_progress ON public.user_roadmap_progress
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_points_ledger ON public.points_ledger
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+--
+-- CREATE POLICY app_service_points_ledger_revocations ON public.points_ledger_revocations
+--     FOR ALL TO pragyax_backend_app USING (true) WITH CHECK (true);
+
+-- [REVIEW ITEM 6]: PostgREST Public Seal
+-- Confirm complete revocation of public access from untrusted client-facing roles.
+-- REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;

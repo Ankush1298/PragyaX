@@ -26,7 +26,9 @@ export function Sidebar({
   // Group navigation items by category
   const coreItems = NAVIGATION_ITEMS.filter((item) => item.category === "core");
   const practiceItems = NAVIGATION_ITEMS.filter((item) => item.category === "practice");
+  const socialItems = NAVIGATION_ITEMS.filter((item) => item.category === "social");
   const recordItems = NAVIGATION_ITEMS.filter((item) => item.category === "records");
+  const adminItems = NAVIGATION_ITEMS.filter((item) => item.category === "admin");
 
   return (
     <aside
@@ -69,7 +71,21 @@ export function Sidebar({
           </a>
         ))}
 
-        <span className="nav-section-title">Analytics & History</span>
+        <span className="nav-section-title">Community & Battles</span>
+        {socialItems.map(({ path, label, icon: Icon }) => (
+          <a
+            key={path}
+            href={`#/${path}`}
+            className={`nav-link ${current === path ? "active" : ""}`}
+            aria-current={current === path ? "page" : undefined}
+            onClick={onClose}
+          >
+            <Icon size={18} aria-hidden />
+            <span>{label}</span>
+          </a>
+        ))}
+
+        <span className="nav-section-title">Analytics & Credentials</span>
         {recordItems.map(({ path, label, icon: Icon }) => (
           <a
             key={path}
@@ -82,6 +98,24 @@ export function Sidebar({
             <span>{label}</span>
           </a>
         ))}
+
+        {adminItems.length > 0 && (
+          <>
+            <span className="nav-section-title">System & Admin</span>
+            {adminItems.map(({ path, label, icon: Icon }) => (
+              <a
+                key={path}
+                href={`#/${path}`}
+                className={`nav-link ${current === path ? "active" : ""}`}
+                aria-current={current === path ? "page" : undefined}
+                onClick={onClose}
+              >
+                <Icon size={18} aria-hidden />
+                <span>{label}</span>
+              </a>
+            ))}
+          </>
+        )}
       </nav>
 
       <div className="sidebar-foot">

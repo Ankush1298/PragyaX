@@ -907,7 +907,6 @@ def init_db():
 
         # --------------------------------------------------------------------
         # Safe Idempotent Curriculum Seeding (Synchronized with Migrations 0001 & 0004)
-        # --------------------------------------------------------------------
         # 1. Subjects (7 total: Python active, 6 inactive)
         cursor.executemany(
             """
@@ -937,3 +936,18 @@ def init_db():
         """,
             SEEDED_CHALLENGE,
         )
+
+        # 4. Seed default demo students if missing
+        cursor.execute("SELECT COUNT(*) AS cnt FROM users WHERE email = 'student@college.edu';")
+        if cursor.fetchone()["cnt"] == 0:
+            from ..services.auth_service import hash_password, generate_salt
+            salt = generate_salt()
+            pwd_hash = hash_password("demopassword123", salt)
+            cursor.execute("""
+                INSERT OR IGNORE INTO users (id, name, email, password_hash, salt)
+                VALUES ('usr_demo_student', 'Asha Sharma', 'student@college.edu', ?, ?);
+            """, (pwd_hash, salt))
+            cursor.execute("""
+                INSERT OR IGNORE INTO user_preferences (user_id, selected_subject_id)
+                VALUES ('usr_demo_student', 'subj_python');
+            """)

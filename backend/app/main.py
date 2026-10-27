@@ -16,7 +16,13 @@ from .routers import (
     assessments_router,
     dashboard_router,
     challenges_router,
-    roadmap_router
+    roadmap_router,
+    battles_router,
+    competitions_router,
+    referrals_router,
+    certificates_router,
+    gamification_router,
+    admin_competitions_router
 )
 
 
@@ -57,6 +63,12 @@ app.include_router(assessments_router, prefix=settings.API_PREFIX)
 app.include_router(dashboard_router, prefix=settings.API_PREFIX)
 app.include_router(challenges_router, prefix=settings.API_PREFIX)
 app.include_router(roadmap_router, prefix=settings.API_PREFIX)
+app.include_router(battles_router, prefix=settings.API_PREFIX)
+app.include_router(competitions_router, prefix=settings.API_PREFIX)
+app.include_router(referrals_router, prefix=settings.API_PREFIX)
+app.include_router(certificates_router, prefix=settings.API_PREFIX)
+app.include_router(gamification_router, prefix=settings.API_PREFIX)
+app.include_router(admin_competitions_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")
