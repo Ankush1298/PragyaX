@@ -1,13 +1,14 @@
 import { useRef, useState, type FormEvent } from "react";
 import {
-  ArrowDown,
+  ArrowRight,
   Award,
   Bot,
   BrainCircuit,
-  Compass,
   FileCode2,
   GraduationCap,
   Lock,
+  Quote,
+  ShieldCheck,
   Sparkles,
   Target,
   Trophy,
@@ -17,7 +18,7 @@ import { api } from "../api/client";
 import type { User } from "../api/types";
 import { Alert } from "../components/ui/Alert";
 import { Button } from "../components/ui/Button";
-import { HeroArtwork } from "../components/ui/HeroArtwork";
+import { ProductPreview } from "../components/ui/ProductPreview";
 
 const EMAIL_RE = /^[\w.+-]+@[\w-]+(\.[\w-]+)+$/;
 
@@ -34,8 +35,10 @@ export default function AuthPage({
   const [busy, setBusy] = useState(false);
 
   const accountRef = useRef<HTMLDivElement>(null);
-  const journeyRef = useRef<HTMLElement>(null);
-  const philosophyRef = useRef<HTMLElement>(null);
+  const cycleRef = useRef<HTMLElement>(null);
+  const curriculumRef = useRef<HTMLElement>(null);
+  const capabilitiesRef = useRef<HTMLElement>(null);
+  const testimonialsRef = useRef<HTMLElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
 
@@ -88,375 +91,614 @@ export default function AuthPage({
 
   const focusAuth = (preferredMode: "login" | "register" = "register") => {
     switchMode(preferredMode);
-    accountRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    accountRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
 
-  const scrollToPhilosophy = () => {
-    philosophyRef.current?.scrollIntoView({ behavior: "smooth" });
+  const fillDemoStudent = () => {
+    setMode("login");
+    setEmail("student@college.edu");
+    setPassword("demopassword123");
+    setError(null);
+    setTimeout(() => {
+      emailInputRef.current?.focus();
+    }, 50);
   };
 
-  const scrollToJourney = () => {
-    journeyRef.current?.scrollIntoView({ behavior: "smooth" });
+  const scrollToSection = (ref: React.RefObject<HTMLElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
-    <div className="landing-shell">
-      {/* Subtle Architectural Grid Lines Overlay */}
-      <div className="grid-lines-bg" aria-hidden="true" />
-
-      {/* Top Editorial Navigation */}
-      <header className="landing-nav">
-        <a href="#/" className="brand">
-          <GraduationCap size={26} aria-hidden /> Pragya<span className="brand-x">X</span>
-        </a>
-
-        <nav className="landing-nav-links" aria-label="Landing Navigation">
-          <a href="#philosophy" onClick={(e) => { e.preventDefault(); scrollToPhilosophy(); }}>
-            Philosophy
+    <div className="landing-shell-clean">
+      {/* Top Clean Minimal Navigation Bar */}
+      <header className="clean-nav">
+        <div className="clean-nav-container">
+          <a href="#/" className="brand-logo">
+            <div className="brand-icon-box">
+              <GraduationCap size={20} aria-hidden />
+            </div>
+            <span className="brand-title">
+              Pragya<span className="brand-accent">X</span>
+            </span>
           </a>
-          <a href="#journey" onClick={(e) => { e.preventDefault(); scrollToJourney(); }}>
-            Journey
-          </a>
-          <a href="#capabilities">Capabilities</a>
-          <button
-            type="button"
-            className="nav-text-btn"
-            onClick={() => focusAuth("login")}
-          >
-            Sign in
-          </button>
-        </nav>
 
-        <div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => focusAuth("register")}
-          >
-            Create Account
-          </Button>
+          <nav className="clean-nav-links" aria-label="Landing Navigation">
+            <button
+              type="button"
+              className="nav-link-btn"
+              onClick={() => scrollToSection(cycleRef)}
+            >
+              Learning Cycle
+            </button>
+            <button
+              type="button"
+              className="nav-link-btn"
+              onClick={() => scrollToSection(curriculumRef)}
+            >
+              Curriculum
+            </button>
+            <button
+              type="button"
+              className="nav-link-btn"
+              onClick={() => scrollToSection(capabilitiesRef)}
+            >
+              Capabilities
+            </button>
+            <button
+              type="button"
+              className="nav-link-btn"
+              onClick={() => scrollToSection(testimonialsRef)}
+            >
+              Testimonials
+            </button>
+          </nav>
+
+          <div className="clean-nav-actions">
+            <button
+              type="button"
+              className="btn-link"
+              onClick={() => focusAuth("login")}
+            >
+              Sign in
+            </button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => focusAuth("register")}
+            >
+              Start Learning Free
+            </Button>
+          </div>
         </div>
       </header>
 
-      {/* Hero Section — Prominent Artwork & Upper-Viewport Authentication */}
-      <section className="hero-section" id="hero">
-        <div className="hero-text-block">
-          <div className="eyebrow">AI-POWERED GAMIFIED LEARNING</div>
-
-          <h1 className="hero-headline">
-            Learn by doing. <br />
-            Grow by <em>proving.</em>
-          </h1>
-
-          <p className="hero-lead">
-            Turn theoretical knowledge into real skills with personalized learning,
-            adaptive assessments, and verifiable skill scorecards.
-          </p>
-
-          {/* Authentication Card Positioned Directly in Upper Viewport */}
-          <div className="auth-card hero-auth-card" ref={accountRef} id="account">
-            <div className="tabs" role="tablist" aria-label="Account Mode">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === "register"}
-                className={mode === "register" ? "tab active" : "tab"}
-                onClick={() => switchMode("register")}
-              >
-                Create account
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={mode === "login"}
-                className={mode === "login" ? "tab active" : "tab"}
-                onClick={() => switchMode("login")}
-              >
-                Log in
-              </button>
+      {/* Hero Section: Value Proposition & Interactive Product Preview */}
+      <section className="clean-hero-section">
+        <div className="clean-hero-container">
+          {/* Left Column: Headline, Value Props, and Auth Card */}
+          <div className="clean-hero-copy">
+            <div className="badge-pill">
+              <Sparkles size={14} className="badge-pill-icon" aria-hidden />
+              <span>AI-Powered Practical Learning</span>
             </div>
 
-            <form onSubmit={submit} noValidate>
-              {mode === "register" && (
-                <label className="field">
-                  <span>Full name</span>
+            <h1 className="clean-hero-headline">
+              Transform theory into <span className="text-gradient">verifiable skill.</span>
+            </h1>
+
+            <p className="clean-hero-lead">
+              PragyaX combines rapid diagnostic evaluations, contextual AI tutoring,
+              and objective server-evaluated code challenges to help students master
+              practical software concepts with proven results.
+            </p>
+
+            {/* Seamless Authentication Card */}
+            <div className="clean-auth-card" ref={accountRef} id="account">
+              <div className="auth-card-top-row">
+                <div className="clean-tabs" role="tablist">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === "register"}
+                    className={mode === "register" ? "tab active" : "tab"}
+                    onClick={() => switchMode("register")}
+                  >
+                    Create account
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === "login"}
+                    className={mode === "login" ? "tab active" : "tab"}
+                    onClick={() => switchMode("login")}
+                  >
+                    Sign in
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  className="demo-autofill-btn"
+                  onClick={fillDemoStudent}
+                  title="Fill demo credentials for testing"
+                >
+                  <Zap size={12} aria-hidden /> Demo login
+                </button>
+              </div>
+
+              <form onSubmit={submit} noValidate className="clean-auth-form">
+                {mode === "register" && (
+                  <label className="field-group">
+                    <span className="field-label">Full name</span>
+                    <input
+                      ref={nameInputRef}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      autoComplete="name"
+                      placeholder="e.g. Asha Sharma"
+                      className="clean-input"
+                    />
+                  </label>
+                )}
+
+                <label className="field-group">
+                  <span className="field-label">Email address</span>
                   <input
-                    ref={nameInputRef}
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    autoComplete="name"
-                    placeholder="e.g. Asha Sharma"
+                    ref={emailInputRef}
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    placeholder="you@college.edu"
+                    className="clean-input"
                   />
                 </label>
-              )}
 
-              <label className="field">
-                <span>Email address</span>
-                <input
-                  ref={emailInputRef}
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  placeholder="you@college.edu"
-                />
-              </label>
+                <label className="field-group">
+                  <span className="field-label">Password</span>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete={mode === "register" ? "new-password" : "current-password"}
+                    placeholder={mode === "register" ? "At least 6 characters" : "Your password"}
+                    className="clean-input"
+                  />
+                </label>
 
-              <label className="field">
-                <span>Password</span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete={mode === "register" ? "new-password" : "current-password"}
-                  placeholder={mode === "register" ? "At least 6 characters" : "Your password"}
-                />
-              </label>
+                {error && <Alert variant="error" message={error} />}
 
-              {error && <Alert variant="error" message={error} />}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  block
+                  disabled={busy}
+                  loading={busy}
+                >
+                  {mode === "register" ? "Start Learning Free" : "Sign in to Dashboard"}
+                </Button>
+              </form>
 
+              <div className="auth-card-meta">
+                <span className="meta-text">
+                  <Lock size={12} aria-hidden /> Local session persistence · Offline mode enabled
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: High-Fidelity Product UI Preview */}
+          <div className="clean-hero-preview">
+            <ProductPreview />
+          </div>
+        </div>
+      </section>
+
+      {/* Section C: The 5-Stage Learning Cycle (ASSESS -> PERSONALIZE -> PRACTICE -> PROVE -> IMPROVE) */}
+      <section id="cycle" ref={cycleRef} className="section-white">
+        <div className="section-container">
+          <div className="section-header-centered">
+            <span className="section-eyebrow">THE PRAGYAX LEARNING CYCLE</span>
+            <h2 className="section-title">A continuous loop from theory to verifiable ability.</h2>
+            <p className="section-subtitle">
+              Unlike static textbook readings or passive video lectures, PragyaX follows a
+              rigorous 5-stage pedagogical loop to identify gaps and build true conceptual mastery.
+            </p>
+          </div>
+
+          <div className="cycle-timeline-grid">
+            {/* Step 1 */}
+            <div className="cycle-card">
+              <div className="cycle-step-header">
+                <span className="cycle-step-num">01</span>
+                <span className="cycle-tag">DIAGNOSTIC</span>
+              </div>
+              <div className="cycle-icon-box">
+                <Target size={22} aria-hidden />
+              </div>
+              <h3 className="cycle-card-title">ASSESS</h3>
+              <p className="cycle-card-desc">
+                Pinpoint your precise baseline with focused 5-question diagnostics testing core
+                semantics like LEGB scope, mutability, and aliasing.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="cycle-card">
+              <div className="cycle-step-header">
+                <span className="cycle-step-num">02</span>
+                <span className="cycle-tag">TARGETED</span>
+              </div>
+              <div className="cycle-icon-box">
+                <BrainCircuit size={22} aria-hidden />
+              </div>
+              <h3 className="cycle-card-title">PERSONALIZE</h3>
+              <p className="cycle-card-desc">
+                Server-side diagnostics automatically formulate customized study roadmaps based
+                directly on the specific questions you missed.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="cycle-card">
+              <div className="cycle-step-header">
+                <span className="cycle-step-num">03</span>
+                <span className="cycle-tag">INTERACTIVE</span>
+              </div>
+              <div className="cycle-icon-box">
+                <Bot size={22} aria-hidden />
+              </div>
+              <h3 className="cycle-card-title">PRACTICE</h3>
+              <p className="cycle-card-desc">
+                Engage in guided dialogue with the AI Learning Assistant. Explore counter-examples,
+                syntax edge cases, and solve daily bite-sized puzzles.
+              </p>
+            </div>
+
+            {/* Step 4 */}
+            <div className="cycle-card">
+              <div className="cycle-step-header">
+                <span className="cycle-step-num">04</span>
+                <span className="cycle-tag">EVALUATED</span>
+              </div>
+              <div className="cycle-icon-box">
+                <ShieldCheck size={22} aria-hidden />
+              </div>
+              <h3 className="cycle-card-title">PROVE</h3>
+              <p className="cycle-card-desc">
+                Demonstrate genuine ability through server-evaluated assessments that provide
+                instant objective grading and comprehensive explanations.
+              </p>
+            </div>
+
+            {/* Step 5 */}
+            <div className="cycle-card">
+              <div className="cycle-step-header">
+                <span className="cycle-step-num">05</span>
+                <span className="cycle-tag">MEASURED</span>
+              </div>
+              <div className="cycle-icon-box">
+                <Trophy size={22} aria-hidden />
+              </div>
+              <h3 className="cycle-card-title">IMPROVE</h3>
+              <p className="cycle-card-desc">
+                Track your longitudinal scorecards, climb from Beginner to Advanced proficiency,
+                and earn verifiable digital achievement badges.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section D: Core Platform Capabilities */}
+      <section id="capabilities" ref={capabilitiesRef} className="section-soft">
+        <div className="section-container">
+          <div className="section-header-centered">
+            <span className="section-eyebrow">PLATFORM CAPABILITIES</span>
+            <h2 className="section-title">Engineered for academic depth and technical clarity.</h2>
+            <p className="section-subtitle">
+              Everything built into PragyaX serves one purpose: helping students understand how code
+              actually operates under the hood.
+            </p>
+          </div>
+
+          <div className="features-grid-3x2">
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <Target size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">Adaptive Assessments</h3>
+              <p className="feature-body">
+                Questions are graded objectively on the backend. No vague multiple-choice fluff—each
+                problem tests real language mechanics and common misconceptions.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <Bot size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">AI Learning Assistant</h3>
+              <p className="feature-body">
+                Integrated chat trained on core programming pedagogy. Features syntax-highlighted code
+                examples, persistent history, and intelligent follow-up suggestions.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <BrainCircuit size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">Dynamic Roadmaps</h3>
+              <p className="feature-body">
+                Recommendations aren't generic. When you miss a question on function scope or list
+                mutability, your roadmap dynamically updates with exact remediation topics.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <Zap size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">Daily Code Breakers</h3>
+              <p className="feature-body">
+                Solve a new bite-sized code snippet puzzle every day. Earn bonus points, maintain
+                daily study momentum, and unlock the Daily Code Breaker badge.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <Award size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">Verifiable Badges</h3>
+              <p className="feature-body">
+                Earn tangible digital credentials as you hit key milestones: First Assessment, Chat
+                Explorer, Python Foundation Mastery, and High Score ratings.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <FileCode2 size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">Deterministic Local Mode</h3>
+              <p className="feature-body">
+                Runs completely offline with local SQLite file-backed persistence and deterministic
+                mock AI providers for zero setup friction.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section E: Curriculum Showcase */}
+      <section id="curriculum" ref={curriculumRef} className="section-white">
+        <div className="section-container">
+          <div className="section-header-centered">
+            <span className="section-eyebrow">CURRICULUM TRACKS</span>
+            <h2 className="section-title">Deep foundational mastery in core programming languages.</h2>
+            <p className="section-subtitle">
+              Explore our structured modules designed to bridge the gap between classroom theory and
+              practical software development.
+            </p>
+          </div>
+
+          <div className="curriculum-showcase-box">
+            <div className="curriculum-track-header">
+              <div className="track-left">
+                <div className="track-badge">ACTIVE CURRICULUM</div>
+                <h3 className="track-title">Python Programming: Core Mechanics & Semantics</h3>
+                <p className="track-desc">
+                  Covers the fundamental conceptual model of Python execution, memory allocation,
+                  scope resolution, and data structure behavior.
+                </p>
+              </div>
               <Button
-                type="submit"
                 variant="primary"
-                block
-                disabled={busy}
-                loading={busy}
+                size="sm"
+                onClick={() => focusAuth("register")}
               >
-                {mode === "register" ? "Create Account & Start Learning" : "Log In to Your Account"}
+                Enroll & Take Diagnostic
               </Button>
-            </form>
-
-            <div className="auth-card-footer">
-              <span className="fine">
-                <Lock size={12} aria-hidden /> Session restored automatically
-              </span>
-              <button
-                type="button"
-                className="scroll-peek-link"
-                onClick={scrollToJourney}
-              >
-                Explore method & curriculum <ArrowDown size={13} aria-hidden />
-              </button>
             </div>
-          </div>
-        </div>
 
-        {/* Sculptural Knowledge Metaphor Artwork Column */}
-        <div className="hero-artwork-column">
-          <HeroArtwork />
+            <div className="curriculum-topics-grid">
+              <div className="topic-col">
+                <span className="topic-num">01</span>
+                <h4>Variables & Memory Aliasing</h4>
+                <p>Identity (`is`) vs Equality (`==`), variable referencing, and object IDs.</p>
+              </div>
+              <div className="topic-col">
+                <span className="topic-num">02</span>
+                <h4>The LEGB Scope Rule</h4>
+                <p>Local, Enclosing, Global, Built-in scope resolution and `global`/`nonlocal`.</p>
+              </div>
+              <div className="topic-col">
+                <span className="topic-num">03</span>
+                <h4>Mutability & Default Args</h4>
+                <p>Why mutable default parameters cause persistent state bugs between calls.</p>
+              </div>
+              <div className="topic-col">
+                <span className="topic-num">04</span>
+                <h4>List & Dict Comprehensions</h4>
+                <p>Idiomatic transformations, nested conditionals, and memory efficiency.</p>
+              </div>
+            </div>
 
-          {/* Core Foundation Highlights Aligned Below Artwork */}
-          <div className="hero-meta-points">
-            <div className="hero-meta-item">
-              <strong>01 / Assess</strong>
-              <span>5-Question Diagnostics</span>
-            </div>
-            <div className="hero-meta-item">
-              <strong>02 / Tutor</strong>
-              <span>Interactive AI Chat</span>
-            </div>
-            <div className="hero-meta-item">
-              <strong>03 / Master</strong>
-              <span>Verified Skill Scorecards</span>
+            <div className="curriculum-upcoming-banner">
+              <span className="upcoming-label">UPCOMING EXPANSIONS:</span>
+              <span className="upcoming-pill">Data Structures & Complexity</span>
+              <span className="upcoming-pill">Web System Architecture</span>
+              <span className="upcoming-pill">Algorithms & Graph Traversal</span>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Section A: Learning Philosophy */}
-      <section id="philosophy" ref={philosophyRef} className="editorial-section">
-        <div className="section-header">
-          <div className="eyebrow">THE PRAGYAX METHOD</div>
-          <h2>Moving beyond passive memorization into verifiable ability.</h2>
-          <p className="muted">
-            College learning shouldn't stop at reading textbooks. PragyaX combines
-            interactive dialogue, objective testing, and real coding practice.
+      {/* Section F: Student & Academic Social Proof */}
+      <section id="testimonials" ref={testimonialsRef} className="section-soft">
+        <div className="section-container">
+          <div className="section-header-centered">
+            <span className="section-eyebrow">STUDENT IMPACT</span>
+            <h2 className="section-title">Trusted by students proving their practical ability.</h2>
+            <p className="section-subtitle">
+              Here is what learners and instructors have to say about the PragyaX diagnostic loop.
+            </p>
+          </div>
+
+          <div className="testimonials-grid">
+            <div className="testimonial-card">
+              <Quote className="quote-icon" size={24} aria-hidden />
+              <p className="quote-body">
+                "PragyaX replaced passive textbook reading with actual evaluation. The 5-question
+                assessment immediately exposed where my mental model of Python scope was flawed."
+              </p>
+              <div className="quote-author">
+                <div className="author-avatar">AS</div>
+                <div>
+                  <strong>Asha Sharma</strong>
+                  <span>2nd Year Computer Science Student</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="testimonial-card">
+              <Quote className="quote-icon" size={24} aria-hidden />
+              <p className="quote-body">
+                "The AI tutor dialogues don't just give answers—they explain the exact execution
+                semantics. It helped me understand default argument mutability in 10 minutes."
+              </p>
+              <div className="quote-author">
+                <div className="author-avatar">RP</div>
+                <div>
+                  <strong>Rohan Patel</strong>
+                  <span>Software Engineering Undergraduate</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="testimonial-card">
+              <Quote className="quote-icon" size={24} aria-hidden />
+              <p className="quote-body">
+                "We recommend PragyaX to students preparing for practical coding labs. The verified
+                scorecards and diagnostic roadmaps make self-paced learning truly measurable."
+              </p>
+              <div className="quote-author">
+                <div className="author-avatar">DK</div>
+                <div>
+                  <strong>Prof. D. Kulkarni</strong>
+                  <span>Department of Computer Applications</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section G: Final Call to Action */}
+      <section className="section-cta-banner">
+        <div className="cta-banner-container">
+          <h2 className="cta-title">Ready to verify your practical programming skills?</h2>
+          <p className="cta-subtitle">
+            Join PragyaX today. Free diagnostic evaluation, personalized AI tutoring, and verified
+            skill scorecards.
           </p>
-        </div>
-
-        <div className="philosophy-grid">
-          <article className="philosophy-card">
-            <span className="philosophy-num">PHASE // 01</span>
-            <div className="capability-icon">
-              <Compass size={22} aria-hidden />
-            </div>
-            <h3 className="philosophy-title">DISCOVER</h3>
-            <p className="philosophy-desc">
-              Understand what you already know. Uncover your precise baseline and
-              knowledge boundaries with rapid diagnostic challenges.
-            </p>
-          </article>
-
-          <article className="philosophy-card">
-            <span className="philosophy-num">PHASE // 02</span>
-            <div className="capability-icon">
-              <Sparkles size={22} aria-hidden />
-            </div>
-            <h3 className="philosophy-title">PRACTICE</h3>
-            <p className="philosophy-desc">
-              Build knowledge through conversational AI tutoring, contextual follow-ups,
-              and bite-sized daily code breaker puzzles.
-            </p>
-          </article>
-
-          <article className="philosophy-card">
-            <span className="philosophy-num">PHASE // 03</span>
-            <div className="capability-icon">
-              <Trophy size={22} aria-hidden />
-            </div>
-            <h3 className="philosophy-title">PROVE</h3>
-            <p className="philosophy-desc">
-              Demonstrate genuine progress. Server-evaluated assessments award verified
-              proficiency ratings, points, and unlockable achievement badges.
-            </p>
-          </article>
-        </div>
-      </section>
-
-      {/* Section B: The Learning Journey */}
-      <section id="journey" ref={journeyRef} className="editorial-section">
-        <div className="section-header">
-          <div className="eyebrow">STEP-BY-STEP PROGRESSION</div>
-          <h2>The Journey: From theory to practical skill.</h2>
-          <p className="muted">
-            Each learning cycle takes you from concept exploration to objective evaluation.
-          </p>
-        </div>
-
-        <div className="journey-sequence">
-          <div className="journey-step active">
-            <span className="journey-step-badge">1</span>
-            <h3>Subject Selection</h3>
-            <p>
-              Choose from specialized curriculum tracks. Start with Python Programming
-              foundation concepts.
-            </p>
-          </div>
-
-          <div className="journey-step">
-            <span className="journey-step-badge">2</span>
-            <h3>Server Assessment</h3>
-            <p>
-              Complete a focused 5-question evaluation graded by server-side logic
-              with real-time feedback.
-            </p>
-          </div>
-
-          <div className="journey-step">
-            <span className="journey-step-badge">3</span>
-            <h3>Personalized Chat</h3>
-            <p>
-              Deep-dive into weak areas. Ask the learning assistant questions with
-              curated follow-up prompts.
-            </p>
-          </div>
-
-          <div className="journey-step">
-            <span className="journey-step-badge">4</span>
-            <h3>Skill Progress</h3>
-            <p>
-              Review your score percentage, unlock achievements, and climb from
-              Beginner to Advanced mastery.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Section C: Product Capabilities */}
-      <section id="capabilities" className="editorial-section">
-        <div className="section-header">
-          <div className="eyebrow">PLATFORM CAPABILITIES</div>
-          <h2>Everything you need to master practical skills.</h2>
-        </div>
-
-        <div className="capabilities-grid">
-          <div className="capability-card">
-            <div className="capability-icon">
-              <Target size={20} aria-hidden />
-            </div>
-            <h3>Adaptive Assessments</h3>
-            <p>
-              Server-evaluated assessments test core conceptual mechanics including
-              Python scope (LEGB), mutability, and list comprehensions.
-            </p>
-          </div>
-
-          <div className="capability-card">
-            <div className="capability-icon">
-              <Bot size={20} aria-hidden />
-            </div>
-            <h3>AI Learning Assistant</h3>
-            <p>
-              Trained learning chat with safe Markdown code rendering, intelligent
-              suggested follow-ups, and session persistence.
-            </p>
-          </div>
-
-          <div className="capability-card">
-            <div className="capability-icon">
-              <BrainCircuit size={20} aria-hidden />
-            </div>
-            <h3>Diagnostic Roadmaps</h3>
-            <p>
-              Targeted topic recommendations derived dynamically from the questions
-              you missed during assessments.
-            </p>
-          </div>
-
-          <div className="capability-card">
-            <div className="capability-icon">
-              <Zap size={20} aria-hidden />
-            </div>
-            <h3>Daily Code Breaker</h3>
-            <p>
-              Solve a daily bite-sized code snippet puzzle to earn instant bonus
-              points and the Daily Code Breaker badge.
-            </p>
-          </div>
-
-          <div className="capability-card">
-            <div className="capability-icon">
-              <Award size={20} aria-hidden />
-            </div>
-            <h3>Verifiable Badges</h3>
-            <p>
-              Earn tangible digital badges as you hit learning milestones, complete
-              assessments, and maintain study momentum.
-            </p>
-          </div>
-
-          <div className="capability-card">
-            <div className="capability-icon">
-              <FileCode2 size={20} aria-hidden />
-            </div>
-            <h3>Offline Deterministic Mode</h3>
-            <p>
-              Runs fully offline with file-backed SQLite persistence and deterministic
-              mock AI providers for zero setup friction.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Section D: Bottom Closing Section with Quick Action to Return to Form */}
-      <section className="landing-closing-banner">
-        <div className="closing-banner-inner">
-          <div className="eyebrow">READY TO PROVE YOUR SKILLS?</div>
-          <h2>Begin your learning journey today.</h2>
-          <p className="muted">
-            Free diagnostic evaluation, real-time AI tutor dialogues, and verified badges.
-          </p>
-          <div style={{ marginTop: 20 }}>
+          <div className="cta-action-row">
             <Button
               variant="primary"
               size="lg"
               onClick={() => focusAuth("register")}
             >
-              Start Learning Now
+              Start Free Assessment <ArrowRight size={16} aria-hidden />
+            </Button>
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={fillDemoStudent}
+            >
+              Sign In with Demo Account
             </Button>
           </div>
         </div>
       </section>
+
+      {/* Section H: Comprehensive Modern SaaS Footer */}
+      <footer className="clean-footer">
+        <div className="footer-container">
+          <div className="footer-columns-grid">
+            {/* Column 1: Brand & Operational Status */}
+            <div className="footer-col brand-col">
+              <div className="brand-logo footer-logo">
+                <div className="brand-icon-box">
+                  <GraduationCap size={18} aria-hidden />
+                </div>
+                <span className="brand-title">
+                  Pragya<span className="brand-accent">X</span>
+                </span>
+              </div>
+              <p className="footer-brand-desc">
+                An AI-powered personalized learning platform that transforms theoretical knowledge
+                into verifiable practical ability through adaptive diagnostics and active practice.
+              </p>
+              <div className="system-status-indicator">
+                <span className="status-dot-active" />
+                <span>All systems operational · SQLite File-Backed</span>
+              </div>
+            </div>
+
+            {/* Column 2: The Learning Cycle */}
+            <div className="footer-col">
+              <h4 className="footer-heading">Learning Cycle</h4>
+              <ul className="footer-links">
+                <li><a href="#cycle" onClick={(e) => { e.preventDefault(); scrollToSection(cycleRef); }}>01 / Assess Diagnostic</a></li>
+                <li><a href="#cycle" onClick={(e) => { e.preventDefault(); scrollToSection(cycleRef); }}>02 / Personalize Roadmap</a></li>
+                <li><a href="#cycle" onClick={(e) => { e.preventDefault(); scrollToSection(cycleRef); }}>03 / Practice AI Chat</a></li>
+                <li><a href="#cycle" onClick={(e) => { e.preventDefault(); scrollToSection(cycleRef); }}>04 / Prove Evaluations</a></li>
+                <li><a href="#cycle" onClick={(e) => { e.preventDefault(); scrollToSection(cycleRef); }}>05 / Improve Badges</a></li>
+              </ul>
+            </div>
+
+            {/* Column 3: Curriculum & Tools */}
+            <div className="footer-col">
+              <h4 className="footer-heading">Curriculum Tracks</h4>
+              <ul className="footer-links">
+                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Python Foundation Track</a></li>
+                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>LEGB Function Scope</a></li>
+                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Object Mutability & Memory</a></li>
+                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Daily Code Breaker</a></li>
+                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Scorecard Analytics</a></li>
+              </ul>
+            </div>
+
+            {/* Column 4: Platform & Integrity */}
+            <div className="footer-col">
+              <h4 className="footer-heading">Platform & Trust</h4>
+              <ul className="footer-links">
+                <li><a href="#account" onClick={(e) => { e.preventDefault(); focusAuth("login"); }}>Student Authentication</a></li>
+                <li><a href="#account" onClick={(e) => { e.preventDefault(); focusAuth("register"); }}>Account Registration</a></li>
+                <li><a href="#capabilities" onClick={(e) => { e.preventDefault(); scrollToSection(capabilitiesRef); }}>System Architecture</a></li>
+                <li><a href="#capabilities" onClick={(e) => { e.preventDefault(); scrollToSection(capabilitiesRef); }}>PBKDF2 Password Security</a></li>
+                <li><a href="#capabilities" onClick={(e) => { e.preventDefault(); scrollToSection(capabilitiesRef); }}>Academic Honor Code</a></li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Bar: Copyright and Policy Links */}
+          <div className="footer-bottom-bar">
+            <span className="copyright-text">
+              © {new Date().getFullYear()} PragyaX Learning Technologies. Built for student success.
+            </span>
+            <div className="footer-legal-links">
+              <span>Privacy Policy</span>
+              <span>·</span>
+              <span>Terms of Service</span>
+              <span>·</span>
+              <span>Academic Integrity</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
