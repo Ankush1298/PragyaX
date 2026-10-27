@@ -277,18 +277,21 @@ def test_api_authentication_enforcement():
     assert res4.status_code == 401
 
 
-def test_http_501_behavior_when_persistence_unavailable(auth_client):
-    """11. HTTP 501 behavior when persistence is unavailable (safety rule)."""
+def test_persistence_completion_success(auth_client):
+    """11. Persistence completion returns HTTP 200 and progress is saved."""
     client = auth_client
 
-    # Attempting to persist module completion must fail with HTTP 501
+    # Successfully complete unlocked module mod_py_types
     res = client.post("/api/roadmap/mod_py_types/complete", json={
         "status": "completed",
         "completion_percentage": 100.0
     })
-    assert res.status_code == 501
-    detail = res.json()["detail"].lower()
-    assert "not yet implemented" in detail or "provisioning" in detail
+    assert res.status_code == 200
+    data = res.json()
+    assert data["module_id"] == "mod_py_types"
+    assert data["status"] == "completed"
+    assert data["completion_percentage"] == 100.0
+    assert data["updated_at"] is not None
 
 
 def test_authenticated_roadmap_retrieval(auth_client):
@@ -478,3 +481,263 @@ def test_progress_validation_and_payload_constraints(auth_client):
 
     # mod_b succeeds when mod_a is completed
     assert validate_module_completion("mod_b", modules, completed_module_ids={"mod_a"}) is True
+
+
+# ===========================================================================
+# Phase 3A: Persistence & State Management Tests
+# ===========================================================================
+
+def test_persistence_workflow_and_idempotency(auth_client):
+    """
+    Tests:
+    1. Completion persists after POST /complete
+    2. Repeated completion is idempotent
+    3. Original completion timestamp is preserved
+    4. GET roadmap reflects stored progress and updates module lock state
+    """
+    client = auth_client
+
+    # Verify initial state: mod_py_types is unlocked, mod_py_collections is locked
+    init_res = client.get("/api/roadmap")
+    assert init_res.status_code == 200
+    init_data = init_res.json()
+    types_mod = next(m for m in init_data["modules"] if m["id"] == "mod_py_types")
+    col_mod = next(m for m in init_data["modules"] if m["id"] == "mod_py_collections")
+    assert types_mod["status"] == "unlocked"
+    assert col_mod["status"] == "locked"
+    assert init_data["overall_progress_percentage"] == 0.0
+
+    # 1. Complete mod_py_types
+    complete_res1 = client.post("/api/roadmap/mod_py_types/complete")
+    assert complete_res1.status_code == 200
+    comp1 = complete_res1.json()
+    assert comp1["module_id"] == "mod_py_types"
+    assert comp1["status"] == "completed"
+    assert comp1["completion_percentage"] == 100.0
+    ts1 = comp1["updated_at"]
+    assert ts1 is not None
+
+    # 2. Repeated completion is idempotent and preserves original timestamp
+    complete_res2 = client.post("/api/roadmap/mod_py_types/complete")
+    assert complete_res2.status_code == 200
+    comp2 = complete_res2.json()
+    assert comp2["module_id"] == "mod_py_types"
+    assert comp2["status"] == "completed"
+    assert comp2["updated_at"] == ts1
+
+    # 3. GET roadmap reflects progress: mod_py_types is completed, mod_py_collections is now unlocked
+    after_res = client.get("/api/roadmap")
+    assert after_res.status_code == 200
+    after_data = after_res.json()
+    types_after = next(m for m in after_data["modules"] if m["id"] == "mod_py_types")
+    col_after = next(m for m in after_data["modules"] if m["id"] == "mod_py_collections")
+    assert types_after["status"] == "completed"
+    assert types_after["completion_percentage"] == 100.0
+    assert col_after["status"] == "unlocked"
+    assert after_data["overall_progress_percentage"] > 0.0
+
+
+def test_prerequisite_gating_and_locked_module_rejection(auth_client):
+    """
+    Tests:
+    5. Invalid module IDs are rejected (404)
+    6. Locked modules cannot be completed (400)
+    7. Completing prerequisites unlocks downstream modules
+    """
+    client = auth_client
+
+    # 5. Invalid module ID
+    bad_res = client.post("/api/roadmap/mod_invalid_ghost_module/complete")
+    assert bad_res.status_code == 404
+
+    # 6. Locked module without prerequisite: mod_py_functions requires mod_py_collections
+    locked_res = client.post("/api/roadmap/mod_py_functions/complete")
+    assert locked_res.status_code == 400
+    assert "Unmet prerequisites" in locked_res.json()["detail"] or "prerequisite" in locked_res.json()["detail"].lower()
+
+    # mod_py_collections requires mod_py_types
+    col_locked_res = client.post("/api/roadmap/mod_py_collections/complete")
+    assert col_locked_res.status_code == 400
+
+    # 7. Complete prerequisite mod_py_types, then mod_py_collections succeeds
+    res_prereq = client.post("/api/roadmap/mod_py_types/complete")
+    assert res_prereq.status_code == 200
+
+    col_unlock_res = client.post("/api/roadmap/mod_py_collections/complete")
+    assert col_unlock_res.status_code == 200
+    assert col_unlock_res.json()["status"] == "completed"
+
+
+def test_tenant_isolation_progress():
+    """
+    4. User A cannot access or affect User B's progress.
+    """
+    client = TestClient(app)
+    sfx_a = uuid.uuid4().hex[:6]
+    sfx_b = uuid.uuid4().hex[:6]
+
+    # Register User A
+    res_a = client.post("/api/auth/register", json={
+        "name": "User Alpha Progress",
+        "email": f"alpha_prog_{sfx_a}@pragyax.test",
+        "password": "PasswordAlpha123!"
+    })
+    token_a = res_a.json()["token"]
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    # Register User B
+    res_b = client.post("/api/auth/register", json={
+        "name": "User Beta Progress",
+        "email": f"beta_prog_{sfx_b}@pragyax.test",
+        "password": "PasswordBeta123!"
+    })
+    token_b = res_b.json()["token"]
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # User A completes mod_py_types
+    comp_a = client.post("/api/roadmap/mod_py_types/complete", headers=headers_a)
+    assert comp_a.status_code == 200
+
+    # User A roadmap shows mod_py_types completed
+    rdm_a = client.get("/api/roadmap", headers=headers_a).json()
+    types_a = next(m for m in rdm_a["modules"] if m["id"] == "mod_py_types")
+    assert types_a["status"] == "completed"
+
+    # User B roadmap must NOT show completed; mod_py_types must still be unlocked with 0% progress
+    rdm_b = client.get("/api/roadmap", headers=headers_b).json()
+    types_b = next(m for m in rdm_b["modules"] if m["id"] == "mod_py_types")
+    assert types_b["status"] == "unlocked"
+    assert types_b["completion_percentage"] == 0.0
+    assert rdm_b["overall_progress_percentage"] == 0.0
+
+
+def test_progress_persists_across_sessions_and_reassessment():
+    """
+    9. Progress survives new authentication sessions (logout / re-login)
+    10. Reassessment does not erase module completion
+    """
+    client = TestClient(app)
+    sfx = uuid.uuid4().hex[:6]
+    email = f"session_test_{sfx}@pragyax.test"
+    password = "SecurePassword123!"
+
+    # 1. Register & complete mod_py_types
+    reg_res = client.post("/api/auth/register", json={
+        "name": "Session Learner",
+        "email": email,
+        "password": password
+    })
+    token1 = reg_res.json()["token"]
+    headers1 = {"Authorization": f"Bearer {token1}"}
+
+    comp_res = client.post("/api/roadmap/mod_py_types/complete", headers=headers1)
+    assert comp_res.status_code == 200
+
+    # 2. Login in a new session (different token)
+    login_res = client.post("/api/auth/login", json={
+        "email": email,
+        "password": password
+    })
+    assert login_res.status_code == 200
+    token2 = login_res.json()["token"]
+    assert token2 != token1
+    headers2 = {"Authorization": f"Bearer {token2}"}
+
+    # Verify progress persists in new session
+    rdm_new_session = client.get("/api/roadmap", headers=headers2).json()
+    mod_types = next(m for m in rdm_new_session["modules"] if m["id"] == "mod_py_types")
+    assert mod_types["status"] == "completed"
+    assert mod_types["completion_percentage"] == 100.0
+
+    # 3. Take assessment (submit answers)
+    sub_res = client.post("/api/assessments/submit", json={
+        "subject_id": "subj_python",
+        "answers": {
+            "q_py_1": "B",
+            "q_py_2": "B",  # wrong
+            "q_py_3": "C",
+            "q_py_4": "B",
+            "q_py_5": "A"
+        }
+    }, headers=headers2)
+    assert sub_res.status_code == 200
+
+    # Verify that roadmap after assessment still remembers mod_py_types as completed
+    rdm_after_assess = client.get("/api/roadmap", headers=headers2).json()
+    mod_types_after = next(m for m in rdm_after_assess["modules"] if m["id"] == "mod_py_types")
+    assert mod_types_after["status"] == "completed"
+    assert mod_types_after["completion_percentage"] == 100.0
+
+
+def test_persistence_hardening_and_integrity(auth_client, monkeypatch):
+    """
+    Step 4 Hardening:
+    - Successful completion persistence and record retrieval
+    - Duplicate completion idempotency
+    - Original completion timestamp preservation across calls
+    - Missing saved row after attempted insert raises RuntimeError (no false success)
+    """
+    from backend.app.database.repository import Repository
+    client = auth_client
+
+    # 1. Complete mod_py_types via Repository directly
+    reg_user_res = client.get("/api/roadmap")
+    user_id = reg_user_res.json()["user_id"]
+
+    rec1 = Repository.save_module_completion(user_id, "subj_python", "mod_py_types")
+    assert rec1["user_id"] == user_id
+    assert rec1["subject_id"] == "subj_python"
+    assert rec1["module_id"] == "mod_py_types"
+    assert rec1["status"] == "completed"
+    assert rec1["completed_at"] is not None
+
+    # 2. Duplicate completion preserves original timestamp and returns existing record
+    rec2 = Repository.save_module_completion(user_id, "subj_python", "mod_py_types")
+    assert rec2["id"] == rec1["id"]
+    assert rec2["completed_at"] == rec1["completed_at"]
+
+    # 3. Simulate database anomaly where SELECT returns None after insert -> must raise RuntimeError
+    # (prevents returning fabricated completion records or false success)
+    from backend.app.database import repository as repo_module
+    from contextlib import contextmanager
+
+    real_get_db = repo_module.get_db
+
+    class BrokenCursor:
+        def __init__(self, raw_cur):
+            self._raw = raw_cur
+
+        def execute(self, query, params=None):
+            return self._raw.execute(query, params) if params is not None else self._raw.execute(query)
+
+        def fetchone(self):
+            return None  # Simulate missing row
+
+        def fetchall(self):
+            return []
+
+    class BrokenConn:
+        def __init__(self, raw_conn):
+            self._conn = raw_conn
+
+        def cursor(self):
+            return BrokenCursor(self._conn.cursor())
+
+        def commit(self):
+            return self._conn.commit()
+
+        def rollback(self):
+            return self._conn.rollback()
+
+        def close(self):
+            return self._conn.close()
+
+    @contextmanager
+    def mock_broken_get_db():
+        with real_get_db() as conn:
+            yield BrokenConn(conn)
+
+    monkeypatch.setattr(repo_module, "get_db", mock_broken_get_db)
+
+    with pytest.raises(RuntimeError, match="Persistence failure: completion record for module"):
+        Repository.save_module_completion(user_id, "subj_python", "mod_py_collections")

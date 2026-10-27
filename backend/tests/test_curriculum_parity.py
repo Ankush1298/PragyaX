@@ -19,11 +19,12 @@ Verifies:
 import os
 import sqlite3
 import tempfile
+
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.config import settings
-from backend.app.database.connection import init_db, get_db, close_db_pool
+from backend.app.database.connection import close_db_pool, get_db, init_db
 from backend.app.database.repository import Repository
 from backend.app.main import app
 
@@ -127,16 +128,23 @@ def test_four_tracks_have_five_mcqs_each(isolated_sqlite_env):
     with get_db() as conn:
         cursor = conn.cursor()
         for track_id in tracks:
-            cursor.execute("""
-                SELECT question_number, id, correct_option 
-                FROM assessment_questions 
-                WHERE subject_id = ? 
+            cursor.execute(
+                """
+                SELECT question_number, id, correct_option
+                FROM assessment_questions
+                WHERE subject_id = ?
                 ORDER BY question_number ASC;
-            """, (track_id,))
+            """,
+                (track_id,),
+            )
             questions = cursor.fetchall()
-            assert len(questions) == 5, f"Track {track_id} does not have exactly 5 questions"
+            assert len(questions) == 5, (
+                f"Track {track_id} does not have exactly 5 questions"
+            )
             numbers = [q["question_number"] for q in questions]
-            assert numbers == [1, 2, 3, 4, 5], f"Track {track_id} has broken slot sequencing"
+            assert numbers == [1, 2, 3, 4, 5], (
+                f"Track {track_id} has broken slot sequencing"
+            )
 
 
 def test_subject_ids_match_postgres_migration(isolated_sqlite_env):
@@ -165,7 +173,9 @@ def test_correct_answers_match_postgres_reference(isolated_sqlite_env):
         for row in cursor.fetchall():
             qid = row["id"]
             expected_opt = EXPECTED_ANSWER_KEYS[qid]
-            assert row["correct_option"] == expected_opt, f"Answer mismatch for {qid}: expected {expected_opt}, got {row['correct_option']}"
+            assert row["correct_option"] == expected_opt, (
+                f"Answer mismatch for {qid}: expected {expected_opt}, got {row['correct_option']}"
+            )
 
 
 def test_inactive_subjects_remain_inactive(isolated_sqlite_env):
@@ -218,15 +228,50 @@ def test_existing_sqlite_database_upgrade():
             );
         """)
         # Insert old 4 subjects
-        cur.executemany("INSERT INTO subjects (id, slug, title, description, icon, is_active, question_count, difficulty) VALUES (?, ?, ?, ?, ?, ?, ?, ?);", [
-            ('subj_python', 'python', 'Python', 'Python', 'python', 1, 5, 'Beginner'),
-            ('subj_webdev', 'webdev', 'Web', 'Web', 'globe', 0, 5, 'Coming Soon'),
-            ('subj_datasci', 'datasci', 'Data', 'Data', 'database', 0, 5, 'Coming Soon'),
-            ('subj_cloud', 'cloud', 'Cloud', 'Cloud', 'cloud', 0, 5, 'Coming Soon'),
-        ])
+        cur.executemany(
+            "INSERT INTO subjects (id, slug, title, description, icon, is_active, question_count, difficulty) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+            [
+                (
+                    "subj_python",
+                    "python",
+                    "Python",
+                    "Python",
+                    "python",
+                    1,
+                    5,
+                    "Beginner",
+                ),
+                ("subj_webdev", "webdev", "Web", "Web", "globe", 0, 5, "Coming Soon"),
+                (
+                    "subj_datasci",
+                    "datasci",
+                    "Data",
+                    "Data",
+                    "database",
+                    0,
+                    5,
+                    "Coming Soon",
+                ),
+                ("subj_cloud", "cloud", "Cloud", "Cloud", "cloud", 0, 5, "Coming Soon"),
+            ],
+        )
         # Insert 1 old question
-        cur.execute("INSERT INTO assessment_questions (id, subject_id, question_number, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, topic, difficulty) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-            ('q_py_1', 'subj_python', 1, 'Q1', 'A', 'B', 'C', 'D', 'B', 'exp', 'topic', 'easy')
+        cur.execute(
+            "INSERT INTO assessment_questions (id, subject_id, question_number, question_text, option_a, option_b, option_c, option_d, correct_option, explanation, topic, difficulty) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+            (
+                "q_py_1",
+                "subj_python",
+                1,
+                "Q1",
+                "A",
+                "B",
+                "C",
+                "D",
+                "B",
+                "exp",
+                "topic",
+                "easy",
+            ),
         )
         conn.commit()
         conn.close()
@@ -272,7 +317,9 @@ def test_repeated_initialization_is_idempotent(isolated_sqlite_env):
 
 def test_existing_student_records_preserved(isolated_sqlite_env):
     """10. Existing student records remain intact after re-initialization."""
-    user = Repository.create_user("Test Student", "student@pragyax.test", "dummy_hash_123", "dummy_salt_123")
+    user = Repository.create_user(
+        "Test Student", "student@pragyax.test", "dummy_hash_123", "dummy_salt_123"
+    )
     user_id = user["id"]
 
     # Re-run initialization
@@ -291,7 +338,9 @@ def test_existing_student_records_preserved(isolated_sqlite_env):
 def test_fresh_sqlite_constraints_reject_invalid_data(isolated_sqlite_env):
     """11. Fresh SQLite constraints reject invalid data (domain CHECK, UNIQUE, FK)."""
     # Create test user for foreign key referencing before opening test connection
-    user = Repository.create_user("Chat User", "chatuser@pragyax.test", "dummy_hash_456", "dummy_salt_456")
+    user = Repository.create_user(
+        "Chat User", "chatuser@pragyax.test", "dummy_hash_456", "dummy_salt_456"
+    )
 
     with get_db() as conn:
         cursor = conn.cursor()
@@ -319,10 +368,13 @@ def test_fresh_sqlite_constraints_reject_invalid_data(isolated_sqlite_env):
 
         # Check 4: Check constraint on chat_messages.role
         with pytest.raises(sqlite3.IntegrityError):
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO chat_messages (id, user_id, subject, role, content)
                 VALUES ('msg_invalid_role', ?, 'Python', 'superadmin', 'Hello');
-            """, (user["id"],))
+            """,
+                (user["id"],),
+            )
 
         # Check 5: Check constraint on daily_challenges.correct_option
         with pytest.raises(sqlite3.IntegrityError):
@@ -358,11 +410,14 @@ def test_existing_backend_api_functional(isolated_sqlite_env):
         assert "SQLite" in h_res.json()["database"]
 
         # Subjects list has 7 subjects
-        reg_res = client.post("/api/auth/register", json={
-            "name": "Integration Student",
-            "email": "intstudent@pragyax.test",
-            "password": "validPassword123!"
-        })
+        reg_res = client.post(
+            "/api/auth/register",
+            json={
+                "name": "Integration Student",
+                "email": "intstudent@pragyax.test",
+                "password": "validPassword123!",
+            },
+        )
         assert reg_res.status_code == 201
         token = reg_res.json()["token"]
         headers = {"Authorization": f"Bearer {token}"}
@@ -373,12 +428,16 @@ def test_existing_backend_api_functional(isolated_sqlite_env):
         assert len(subjects) == 7
 
         # Selecting Coming Soon subject returns 400
-        sel_res = client.post("/api/subjects/select", json={"subject_id": "subj_biology"}, headers=headers)
+        sel_res = client.post(
+            "/api/subjects/select", json={"subject_id": "subj_biology"}, headers=headers
+        )
         assert sel_res.status_code == 400
         assert "Coming Soon" in sel_res.json()["detail"]
 
         # Questions for Python loads exactly 5 MCQs
-        q_res = client.get("/api/assessments/questions?subject_id=subj_python", headers=headers)
+        q_res = client.get(
+            "/api/assessments/questions?subject_id=subj_python", headers=headers
+        )
         assert q_res.status_code == 200
         questions = q_res.json()
         assert len(questions) == 5
