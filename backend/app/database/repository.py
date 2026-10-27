@@ -450,3 +450,65 @@ class Repository:
             """, (user_id,))
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
+
+    # ==========================
+    # 7. ROADMAP PROGRESS PERSISTENCE
+    # ==========================
+
+    @staticmethod
+    def get_user_completed_modules(user_id: str, subject_id: str = "subj_python") -> List[str]:
+        """
+        Retrieves all completed module IDs for a user and subject.
+        Returns a list of module IDs.
+        """
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT module_id
+                FROM user_roadmap_progress
+                WHERE user_id = ? AND subject_id = ? AND status = 'completed'
+                ORDER BY completed_at ASC;
+            """, (user_id, subject_id))
+            rows = cursor.fetchall()
+            return [r["module_id"] for r in rows]
+
+    @staticmethod
+    def save_module_completion(user_id: str, subject_id: str, module_id: str) -> Dict[str, Any]:
+        """
+        Idempotently persists completion of a roadmap module for a user.
+        Preserves original completed_at timestamp if already completed.
+        Returns dict with progress details.
+        """
+        with get_db() as conn:
+            cursor = conn.cursor()
+            # Check if record already exists
+            cursor.execute("""
+                SELECT id, user_id, subject_id, module_id, status, completed_at
+                FROM user_roadmap_progress
+                WHERE user_id = ? AND subject_id = ? AND module_id = ?;
+            """, (user_id, subject_id, module_id))
+            existing = cursor.fetchone()
+            if existing:
+                return dict(existing)
+
+            progress_id = f"prog_{uuid.uuid4().hex[:12]}"
+            cursor.execute("""
+                INSERT INTO user_roadmap_progress (
+                    id, user_id, subject_id, module_id, status
+                )
+                VALUES (?, ?, ?, ?, 'completed')
+                ON CONFLICT (user_id, subject_id, module_id) DO NOTHING;
+            """, (progress_id, user_id, subject_id, module_id))
+
+            cursor.execute("""
+                SELECT id, user_id, subject_id, module_id, status, completed_at
+                FROM user_roadmap_progress
+                WHERE user_id = ? AND subject_id = ? AND module_id = ?;
+            """, (user_id, subject_id, module_id))
+            saved = cursor.fetchone()
+            if not saved:
+                raise RuntimeError(
+                    f"Persistence failure: completion record for module '{module_id}' "
+                    f"(user '{user_id}', subject '{subject_id}') could not be verified after insert."
+                )
+            return dict(saved)

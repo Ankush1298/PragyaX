@@ -470,6 +470,7 @@ def init_db():
             );
         """)
 
+    #Updated upstream
         # Seed initial subjects if empty
         cursor.execute("SELECT COUNT(*) AS cnt FROM subjects;")
         if cursor.fetchone()["cnt"] == 0:
@@ -482,6 +483,39 @@ def init_db():
                 ('subj_datasci', 'datasci', 'Data Science & ML', 'NumPy, Pandas, model evaluation metrics, and exploratory data analysis.', 'database', 0, 5, 'Coming Soon'),
                 ('subj_cloud', 'cloud', 'Cloud & DevOps Architecture', 'Containerization, CI/CD pipelines, and scalable cloud services.', 'cloud', 0, 5, 'Coming Soon')
             ])
+
+        # 11. User Roadmap Module Progress (Local SQLite Persistence)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_roadmap_progress (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                subject_id TEXT NOT NULL,
+                module_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'completed' CHECK (status = 'completed'),
+                completed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE,
+                UNIQUE (user_id, subject_id, module_id)
+            );
+        """)
+
+        # --------------------------------------------------------------------
+        # Performance and Integrity Indexes (Synchronized with Migration 0002)
+        # --------------------------------------------------------------------
+        performance_indexes = [
+            "CREATE INDEX IF NOT EXISTS idx_assessment_attempts_user_created ON assessment_attempts (user_id, created_at DESC);",
+            "CREATE INDEX IF NOT EXISTS idx_chat_messages_user_created ON chat_messages (user_id, created_at DESC);",
+            "CREATE INDEX IF NOT EXISTS idx_assessment_questions_subject ON assessment_questions (subject_id);",
+            "CREATE INDEX IF NOT EXISTS idx_user_badges_user_awarded ON user_badges (user_id, awarded_at DESC);",
+            "CREATE INDEX IF NOT EXISTS idx_active_sessions_user_id ON active_sessions (user_id);",
+            "CREATE INDEX IF NOT EXISTS idx_roadmap_progress_user_subject ON user_roadmap_progress (user_id, subject_id);"
+        ]
+        for idx_sql in performance_indexes:
+            try:
+                cursor.execute(idx_sql)
+            except Exception as exc:
+                logger.warning(f"Could not create SQLite index: {exc}")
+    #Stashed changes
 
         # Seed the 5 Python assessment questions if empty
         cursor.execute("SELECT COUNT(*) AS cnt FROM assessment_questions WHERE subject_id = 'subj_python';")
