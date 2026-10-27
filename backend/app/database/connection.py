@@ -1,14 +1,121 @@
 """
 Database Connection and Initialization Layer
-Local SQLite Demo Fallback with automatic table creation & initial seeding.
+Dual Connection Manager:
+- Hosted Supabase PostgreSQL via psycopg 3 ConnectionPool when DATABASE_URL is set.
+- Local SQLite fallback when DATABASE_URL is empty.
 Owned by: Nagin (Supabase Database Architecture) & Arsh (Backend)
 """
 
 import sqlite3
 import os
 import json
+import logging
 from contextlib import contextmanager
-from ..config import settings
+from typing import Dict, Any, Optional
+from ..config import settings, sanitize_db_url
+
+logger = logging.getLogger(__name__)
+
+# psycopg 3 imports
+try:
+    import psycopg
+    from psycopg.rows import dict_row
+    from psycopg_pool import ConnectionPool
+    PSYCOPG_AVAILABLE = True
+except ImportError:
+    PSYCOPG_AVAILABLE = False
+    dict_row = None
+    ConnectionPool = None
+
+
+class DatabaseConnectionError(Exception):
+    """Raised when database connection fails without leaking secrets."""
+    pass
+
+
+_pool: Optional[Any] = None
+
+
+class PostgresCursorWrapper:
+    """Cursor wrapper that translates '?' placeholders to '%s' for psycopg 3."""
+
+    def __init__(self, raw_cursor):
+        self._cur = raw_cursor
+
+    def execute(self, query: str, params=None):
+        if params is not None:
+            translated_query = query.replace("?", "%s") if "?" in query else query
+            return self._cur.execute(translated_query, params)
+        return self._cur.execute(query)
+
+    def executemany(self, query: str, params_seq):
+        translated_query = query.replace("?", "%s") if "?" in query else query
+        return self._cur.executemany(translated_query, params_seq)
+
+    @staticmethod
+    def _normalize_row(row):
+        if not row or not isinstance(row, dict):
+            return row
+        return {
+            k: (v.isoformat() if hasattr(v, "isoformat") else v)
+            for k, v in row.items()
+        }
+
+    def fetchone(self):
+        row = self._cur.fetchone()
+        return self._normalize_row(row)
+
+    def fetchall(self):
+        rows = self._cur.fetchall()
+        if not rows:
+            return rows
+        return [self._normalize_row(r) for r in rows]
+
+    @property
+    def rowcount(self):
+        return self._cur.rowcount
+
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self._cur.__exit__(exc_type, exc_val, exc_tb)
+
+
+class PostgresConnectionWrapper:
+    """Connection wrapper that returns PostgresCursorWrapper cursors."""
+
+    def __init__(self, raw_conn):
+        self._conn = raw_conn
+
+    def cursor(self, *args, **kwargs):
+        cur = self._conn.cursor(*args, **kwargs)
+        return PostgresCursorWrapper(cur)
+
+    def commit(self):
+        return self._conn.commit()
+
+    def rollback(self):
+        return self._conn.rollback()
+
+    def close(self):
+        return self._conn.close()
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            self._conn.rollback()
+        else:
+            self._conn.commit()
+        return False
 
 
 def get_db_path() -> str:
@@ -17,24 +124,199 @@ def get_db_path() -> str:
     return path
 
 
+def get_db_pool() -> Any:
+    """Returns or initializes the psycopg 3 connection pool."""
+    global _pool
+    if not PSYCOPG_AVAILABLE:
+        raise DatabaseConnectionError("psycopg and psycopg_pool must be installed for PostgreSQL support.")
+    
+    if _pool is not None and not _pool.closed:
+        return _pool
+
+    database_url = settings.DATABASE_URL
+    if not database_url:
+        raise DatabaseConnectionError("DATABASE_URL is not set.")
+
+    # Enforce SSL for PostgreSQL connection unless sslmode is explicitly defined
+    conn_kwargs = {
+        "row_factory": dict_row,
+        "autocommit": False
+    }
+    if "sslmode=" not in database_url.lower():
+        conn_kwargs["sslmode"] = "require"
+
+    try:
+        _pool = ConnectionPool(
+            conninfo=database_url,
+            min_size=1,
+            max_size=10,
+            timeout=10.0,
+            max_idle=300.0,
+            kwargs=conn_kwargs,
+            open=True
+        )
+        return _pool
+    except Exception as e:
+        sanitized = settings.sanitized_database_url
+        raise DatabaseConnectionError(
+            f"Failed to initialize PostgreSQL connection pool to {sanitized}: connection error."
+        ) from None
+
+
+def close_db_pool() -> None:
+    """Gracefully closes the PostgreSQL connection pool."""
+    global _pool
+    if _pool is not None:
+        try:
+            _pool.close()
+        except Exception:
+            pass
+        finally:
+            _pool = None
+
+
 @contextmanager
 def get_db():
-    """Context manager for SQLite connections with row factory enabled."""
-    conn = sqlite3.connect(get_db_path(), timeout=10.0, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
+    """
+    Context manager for database connections:
+    - When DATABASE_URL is set: acquires connection from psycopg 3 pool.
+      Strictly raises DatabaseConnectionError on failure (NO silent fallback to SQLite).
+    - When DATABASE_URL is empty: uses local SQLite with Row factory.
+    """
+    if settings.is_postgres:
+        pool = get_db_pool()
+        try:
+            with pool.connection() as conn:
+                wrapper = PostgresConnectionWrapper(conn)
+                yield wrapper
+        except DatabaseConnectionError:
+            raise
+        except Exception as exc:
+            raise DatabaseConnectionError(f"PostgreSQL query execution failed: {type(exc).__name__}: {exc}") from exc
+    else:
+        conn = sqlite3.connect(get_db_path(), timeout=10.0, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+
+def ping_db() -> Dict[str, Any]:
+    """Read-only SELECT 1 connectivity check."""
+    if settings.is_postgres:
+        try:
+            with get_db() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1 AS alive;")
+                    row = cur.fetchone()
+                    if row and (row.get("alive") == 1 or row.get("?column?") == 1 or list(row.values())[0] == 1):
+                        return {
+                            "status": "healthy",
+                            "engine": "PostgreSQL (Supabase)",
+                            "connected": True,
+                            "sanitized_url": settings.sanitized_database_url
+                        }
+            return {
+                "status": "degraded",
+                "engine": "PostgreSQL (Supabase)",
+                "connected": False,
+                "error": "SELECT 1 returned unexpected output"
+            }
+        except Exception as exc:
+            return {
+                "status": "unhealthy",
+                "engine": "PostgreSQL (Supabase)",
+                "connected": False,
+                "error": f"Connection failed ({type(exc).__name__})"
+            }
+    else:
+        try:
+            with get_db() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT 1 AS alive;")
+                row = cur.fetchone()
+                if row and row["alive"] == 1:
+                    return {
+                        "status": "healthy",
+                        "engine": "SQLite Demo Persistence (File-backed)",
+                        "connected": True,
+                        "path": settings.DATABASE_PATH
+                    }
+            return {
+                "status": "degraded",
+                "engine": "SQLite",
+                "connected": False,
+                "error": "SQLite SELECT 1 failed"
+            }
+        except Exception as exc:
+            return {
+                "status": "unhealthy",
+                "engine": "SQLite",
+                "connected": False,
+                "error": str(exc)
+            }
+
+
+def verify_authorization() -> Dict[str, Any]:
+    """Verifies the active database role and RLS bypass permissions for PostgreSQL."""
+    if not settings.is_postgres:
+        return {
+            "engine": "sqlite",
+            "rls_applicable": False,
+            "authorized": True
+        }
     try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT current_user AS role_name,
+                           rolsuper AS is_superuser,
+                           rolbypassrls AS bypasses_rls
+                    FROM pg_roles
+                    WHERE rolname = current_user;
+                """)
+                row = cur.fetchone()
+                if row:
+                    return {
+                        "engine": "postgresql",
+                        "current_user": row.get("role_name"),
+                        "is_superuser": bool(row.get("is_superuser")),
+                        "bypasses_rls": bool(row.get("bypasses_rls")),
+                        "authorized": True
+                    }
+                return {
+                    "engine": "postgresql",
+                    "current_user": "unknown",
+                    "authorized": False,
+                    "error": "Could not inspect role in pg_roles"
+                }
+    except Exception as exc:
+        return {
+            "engine": "postgresql",
+            "authorized": False,
+            "error": f"Authorization verification query failed: {type(exc).__name__}"
+        }
 
 
 def init_db():
-    """Initializes tables and seeds core subjects & assessment questions if absent."""
+    """Initializes tables for SQLite, or verifies connectivity pool for PostgreSQL."""
+    if settings.is_postgres:
+        # PostgreSQL tables and seeds are managed by schema.sql and seed.sql.
+        # Here we verify connectivity without modifying tables.
+        res = ping_db()
+        if not res["connected"]:
+            raise DatabaseConnectionError(f"PostgreSQL startup verification failed: {res.get('error')}")
+        print("PragyaX Database Initialized with Supabase PostgreSQL pool.")
+        return
+
+    # SQLite demo initialization
     with get_db() as conn:
+
         cursor = conn.cursor()
 
         # 1. Users
