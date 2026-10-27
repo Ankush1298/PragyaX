@@ -34,7 +34,7 @@ def select_subject(payload: SelectSubjectRequest, user: dict = Depends(get_curre
     if not subject["is_active"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"'{subject['title']}' is currently marked as Coming Soon. Only Python Programming is active for this hackathon edition."
+            detail=f"'{subject['title']}' is currently in catalog preview (Coming Soon) and will be fully enabled soon."
         )
 
     updated = Repository.set_user_selected_subject(user["id"], subject["id"])

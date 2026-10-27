@@ -39,7 +39,7 @@ class AssessmentResultResponse(BaseModel):
     id: str
     user_id: str
     subject_id: str
-    subject_title: Optional[str] = "Python Programming"
+    subject_title: Optional[str] = None
     score: int
     total: int
     percentage: float
