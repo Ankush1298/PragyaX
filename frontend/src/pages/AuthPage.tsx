@@ -2,11 +2,17 @@ import { useRef, useState, type FormEvent } from "react";
 import {
   ArrowRight,
   Award,
+  BookOpen,
   Bot,
   BrainCircuit,
-  FileCode2,
+  Code2,
+  Compass,
+  Eye,
+  EyeOff,
+  FileUp,
   GraduationCap,
   Lock,
+  Milestone,
   Quote,
   ShieldCheck,
   Sparkles,
@@ -31,13 +37,16 @@ export default function AuthPage({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const accountRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const problemRef = useRef<HTMLElement>(null);
   const cycleRef = useRef<HTMLElement>(null);
+  const featuresRef = useRef<HTMLElement>(null);
   const curriculumRef = useRef<HTMLElement>(null);
-  const capabilitiesRef = useRef<HTMLElement>(null);
   const testimonialsRef = useRef<HTMLElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
@@ -126,9 +135,23 @@ export default function AuthPage({
             <button
               type="button"
               className="nav-link-btn"
+              onClick={() => scrollToSection(heroRef)}
+            >
+              Product
+            </button>
+            <button
+              type="button"
+              className="nav-link-btn"
               onClick={() => scrollToSection(cycleRef)}
             >
-              Learning Cycle
+              How It Works
+            </button>
+            <button
+              type="button"
+              className="nav-link-btn"
+              onClick={() => scrollToSection(featuresRef)}
+            >
+              Features
             </button>
             <button
               type="button"
@@ -140,16 +163,9 @@ export default function AuthPage({
             <button
               type="button"
               className="nav-link-btn"
-              onClick={() => scrollToSection(capabilitiesRef)}
-            >
-              Capabilities
-            </button>
-            <button
-              type="button"
-              className="nav-link-btn"
               onClick={() => scrollToSection(testimonialsRef)}
             >
-              Testimonials
+              Reviews
             </button>
           </nav>
 
@@ -159,21 +175,21 @@ export default function AuthPage({
               className="btn-link"
               onClick={() => focusAuth("login")}
             >
-              Sign in
+              Sign In
             </button>
             <Button
               variant="primary"
               size="sm"
               onClick={() => focusAuth("register")}
             >
-              Start Learning Free
+              Get Started
             </Button>
           </div>
         </div>
       </header>
 
       {/* Hero Section: Value Proposition & Interactive Product Preview */}
-      <section className="clean-hero-section">
+      <section ref={heroRef} className="clean-hero-section">
         <div className="clean-hero-container">
           {/* Left Column: Headline, Value Props, and Auth Card */}
           <div className="clean-hero-copy">
@@ -183,14 +199,32 @@ export default function AuthPage({
             </div>
 
             <h1 className="clean-hero-headline">
-              Transform theory into <span className="text-gradient">verifiable skill.</span>
+              Learn with direction. <span className="text-gradient">Progress with confidence.</span>
             </h1>
 
             <p className="clean-hero-lead">
-              PragyaX combines rapid diagnostic evaluations, contextual AI tutoring,
-              and objective server-evaluated code challenges to help students master
-              practical software concepts with proven results.
+              Choose your subject, upload your syllabus or enter a topic, and build a learning
+              journey around your goals. PragyaX combines diagnostic evaluations, contextual AI
+              tutoring, and verified skill scorecards.
             </p>
+
+            {/* CTA action buttons */}
+            <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => focusAuth("register")}
+              >
+                Start Learning <ArrowRight size={15} />
+              </Button>
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => scrollToSection(cycleRef)}
+              >
+                Explore How It Works
+              </Button>
+            </div>
 
             {/* Seamless Authentication Card */}
             <div className="clean-auth-card" ref={accountRef} id="account">
@@ -220,7 +254,7 @@ export default function AuthPage({
                   type="button"
                   className="demo-autofill-btn"
                   onClick={fillDemoStudent}
-                  title="Fill demo credentials for testing"
+                  title="Fill demo student credentials"
                 >
                   <Zap size={12} aria-hidden /> Demo login
                 </button>
@@ -256,14 +290,26 @@ export default function AuthPage({
 
                 <label className="field-group">
                   <span className="field-label">Password</span>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete={mode === "register" ? "new-password" : "current-password"}
-                    placeholder={mode === "register" ? "At least 6 characters" : "Your password"}
-                    className="clean-input"
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete={mode === "register" ? "new-password" : "current-password"}
+                      placeholder={mode === "register" ? "At least 6 characters" : "Your password"}
+                      className="clean-input"
+                      style={{ paddingRight: 40 }}
+                    />
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)" }}
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </label>
 
                 {error && <Alert variant="error" message={error} />}
@@ -281,15 +327,97 @@ export default function AuthPage({
 
               <div className="auth-card-meta">
                 <span className="meta-text">
-                  <Lock size={12} aria-hidden /> Local session persistence · Offline mode enabled
+                  <Lock size={12} aria-hidden /> SQLite File-Backed Session · Offline Mode Active
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Right Column: High-Fidelity Product UI Preview */}
+          {/* Right Column: High-Fidelity Authentic Product Preview */}
           <div className="clean-hero-preview">
             <ProductPreview />
+          </div>
+        </div>
+      </section>
+
+      {/* Section B: Problem and Solution (Helping Students Succeed) */}
+      <section ref={problemRef} className="section-soft">
+        <div className="section-container">
+          <div className="section-header-centered">
+            <span className="section-eyebrow">THE PRAGYAX ADVANTAGE</span>
+            <h2 className="section-title">How PragyaX transforms student learning.</h2>
+            <p className="section-subtitle">
+              Traditional platforms present passive lectures. PragyaX provides immediate clarity on
+              what you know, where you struggle, and what to study next.
+            </p>
+          </div>
+
+          <div className="features-grid-3x2">
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <Target size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">1. Identify Knowledge Gaps</h3>
+              <p className="feature-body">
+                Take rapid 5-question diagnostic evaluations that test core execution mechanics,
+                uncovering hidden misconceptions in minutes.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <Bot size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">2. Understand Difficult Topics</h3>
+              <p className="feature-body">
+                Interact with a contextual AI tutor trained on foundational pedagogy that explains
+                why code executes the way it does without giving away answers.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <BrainCircuit size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">3. Decide What to Learn Next</h3>
+              <p className="feature-body">
+                Receive dynamic, objective study recommendations formulated directly from the
+                specific questions you missed in assessments.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <Code2 size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">4. Practice Concepts Actively</h3>
+              <p className="feature-body">
+                Solve Daily Code Breaker puzzles, experiment in the interactive sandbox, and test
+                your speed in live 1v1 peer quiz battles.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <ShieldCheck size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">5. Measure Improvement</h3>
+              <p className="feature-body">
+                Track longitudinal scorecards, proficiency levels (Beginner to Advanced), and
+                verifiable accuracy metrics over time.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <Trophy size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">6. Demonstrate Your Skills</h3>
+              <p className="feature-body">
+                Earn server-verified achievement badges and downloadable Certificates of Practical
+                Proficiency to showcase to colleges and employers.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -298,11 +426,10 @@ export default function AuthPage({
       <section id="cycle" ref={cycleRef} className="section-white">
         <div className="section-container">
           <div className="section-header-centered">
-            <span className="section-eyebrow">THE PRAGYAX LEARNING CYCLE</span>
-            <h2 className="section-title">A continuous loop from theory to verifiable ability.</h2>
+            <span className="section-eyebrow">HOW IT WORKS</span>
+            <h2 className="section-title">The 5-stage continuous learning cycle.</h2>
             <p className="section-subtitle">
-              Unlike static textbook readings or passive video lectures, PragyaX follows a
-              rigorous 5-stage pedagogical loop to identify gaps and build true conceptual mastery.
+              ASSESS → PERSONALIZE → PRACTICE → PROVE → IMPROVE
             </p>
           </div>
 
@@ -318,8 +445,8 @@ export default function AuthPage({
               </div>
               <h3 className="cycle-card-title">ASSESS</h3>
               <p className="cycle-card-desc">
-                Pinpoint your precise baseline with focused 5-question diagnostics testing core
-                semantics like LEGB scope, mutability, and aliasing.
+                Evaluate your baseline with server-graded 5-question diagnostics testing core
+                syntax, mutability, and formulas.
               </p>
             </div>
 
@@ -334,8 +461,8 @@ export default function AuthPage({
               </div>
               <h3 className="cycle-card-title">PERSONALIZE</h3>
               <p className="cycle-card-desc">
-                Server-side diagnostics automatically formulate customized study roadmaps based
-                directly on the specific questions you missed.
+                Generate an adaptive roadmap tailored precisely to the topics and questions you
+                missed during evaluation.
               </p>
             </div>
 
@@ -350,8 +477,8 @@ export default function AuthPage({
               </div>
               <h3 className="cycle-card-title">PRACTICE</h3>
               <p className="cycle-card-desc">
-                Engage in guided dialogue with the AI Learning Assistant. Explore counter-examples,
-                syntax edge cases, and solve daily bite-sized puzzles.
+                Engage in active dialogue with the AI Learning Assistant, read structured lesson notes,
+                and solve daily code puzzles.
               </p>
             </div>
 
@@ -366,8 +493,8 @@ export default function AuthPage({
               </div>
               <h3 className="cycle-card-title">PROVE</h3>
               <p className="cycle-card-desc">
-                Demonstrate genuine ability through server-evaluated assessments that provide
-                instant objective grading and comprehensive explanations.
+                Demonstrate genuine conceptual ability with rigorous server-side evaluations and
+                detailed explanation reviews.
               </p>
             </div>
 
@@ -382,35 +509,79 @@ export default function AuthPage({
               </div>
               <h3 className="cycle-card-title">IMPROVE</h3>
               <p className="cycle-card-desc">
-                Track your longitudinal scorecards, climb from Beginner to Advanced proficiency,
-                and earn verifiable digital achievement badges.
+                Advance from Beginner to Advanced proficiency, climb academic leaderboards, and
+                earn verifiable digital certificates.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Section D: Core Platform Capabilities */}
-      <section id="capabilities" ref={capabilitiesRef} className="section-soft">
+      {/* Section D: Working Features Showcase */}
+      <section id="features" ref={featuresRef} className="section-soft">
         <div className="section-container">
           <div className="section-header-centered">
-            <span className="section-eyebrow">PLATFORM CAPABILITIES</span>
-            <h2 className="section-title">Engineered for academic depth and technical clarity.</h2>
+            <span className="section-eyebrow">PRODUCT CAPABILITIES</span>
+            <h2 className="section-title">Built for authentic technical depth.</h2>
             <p className="section-subtitle">
-              Everything built into PragyaX serves one purpose: helping students understand how code
-              actually operates under the hood.
+              Every feature in PragyaX is fully integrated and designed to support self-paced student
+              mastery.
             </p>
           </div>
 
           <div className="features-grid-3x2">
             <div className="feature-item-card">
               <div className="feature-icon-wrapper">
+                <BookOpen size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">Flexible Subject Selection</h3>
+              <p className="feature-body">
+                Primary active tracks in Python, Mathematics, Physics, Chemistry, and Biology, plus
+                upcoming previews in AI, C++, Java, and DSA.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <FileUp size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">Syllabus Upload & Extraction</h3>
+              <p className="feature-body">
+                Upload your course syllabus (.pdf, .docx, .txt) with automated unit extraction,
+                editable topics, and instant roadmap generation.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <Milestone size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">Manual Topic Entry</h3>
+              <p className="feature-body">
+                Directly enter any custom concept—such as Python Functions, Calculus Derivatives, or
+                Newton's Laws—without requiring a syllabus document.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
+                <Compass size={20} aria-hidden />
+              </div>
+              <h3 className="feature-title">Personalized Roadmaps</h3>
+              <p className="feature-body">
+                Step-by-step milestone timeline with verified prerequisite gates, learning-gap
+                recovery, and objective status tracking.
+              </p>
+            </div>
+
+            <div className="feature-item-card">
+              <div className="feature-icon-wrapper">
                 <Target size={20} aria-hidden />
               </div>
-              <h3 className="feature-title">Adaptive Assessments</h3>
+              <h3 className="feature-title">Server-Graded Assessments</h3>
               <p className="feature-body">
-                Questions are graded objectively on the backend. No vague multiple-choice fluff—each
-                problem tests real language mechanics and common misconceptions.
+                5-question diagnostic evaluations where answer keys and explanations are securely
+                evaluated server-side, never exposed to clients.
               </p>
             </div>
 
@@ -418,21 +589,21 @@ export default function AuthPage({
               <div className="feature-icon-wrapper">
                 <Bot size={20} aria-hidden />
               </div>
-              <h3 className="feature-title">AI Learning Assistant</h3>
+              <h3 className="feature-title">AI Learning Chat</h3>
               <p className="feature-body">
-                Integrated chat trained on core programming pedagogy. Features syntax-highlighted code
-                examples, persistent history, and intelligent follow-up suggestions.
+                Context-aware learning assistant with syntax-highlighted code blocks, subject-specific
+                follow-ups, and persistent discussion history.
               </p>
             </div>
 
             <div className="feature-item-card">
               <div className="feature-icon-wrapper">
-                <BrainCircuit size={20} aria-hidden />
+                <Code2 size={20} aria-hidden />
               </div>
-              <h3 className="feature-title">Dynamic Roadmaps</h3>
+              <h3 className="feature-title">Interactive Code Sandbox</h3>
               <p className="feature-body">
-                Recommendations aren't generic. When you miss a question on function scope or list
-                mutability, your roadmap dynamically updates with exact remediation topics.
+                Execute Python snippets, test execution outputs, and inspect multi-subject question
+                banks with difficulty and topic filters.
               </p>
             </div>
 
@@ -440,10 +611,10 @@ export default function AuthPage({
               <div className="feature-icon-wrapper">
                 <Zap size={20} aria-hidden />
               </div>
-              <h3 className="feature-title">Daily Code Breakers</h3>
+              <h3 className="feature-title">Daily Challenges & 1v1 Battles</h3>
               <p className="feature-body">
-                Solve a new bite-sized code snippet puzzle every day. Earn bonus points, maintain
-                daily study momentum, and unlock the Daily Code Breaker badge.
+                Solve daily bite-sized coding puzzles and challenge peers in real-time 45-second live
+                knowledge sprints.
               </p>
             </div>
 
@@ -451,21 +622,10 @@ export default function AuthPage({
               <div className="feature-icon-wrapper">
                 <Award size={20} aria-hidden />
               </div>
-              <h3 className="feature-title">Verifiable Badges</h3>
+              <h3 className="feature-title">Verified Badges & Certificates</h3>
               <p className="feature-body">
-                Earn tangible digital credentials as you hit key milestones: First Assessment, Chat
-                Explorer, Python Foundation Mastery, and High Score ratings.
-              </p>
-            </div>
-
-            <div className="feature-item-card">
-              <div className="feature-icon-wrapper">
-                <FileCode2 size={20} aria-hidden />
-              </div>
-              <h3 className="feature-title">Deterministic Local Mode</h3>
-              <p className="feature-body">
-                Runs completely offline with local SQLite file-backed persistence and deterministic
-                mock AI providers for zero setup friction.
+                Earn credentials for high scores, daily streaks, and download verifiable Certificates
+                of Practical Proficiency.
               </p>
             </div>
           </div>
@@ -477,21 +637,21 @@ export default function AuthPage({
         <div className="section-container">
           <div className="section-header-centered">
             <span className="section-eyebrow">CURRICULUM TRACKS</span>
-            <h2 className="section-title">Deep foundational mastery in core programming languages.</h2>
+            <h2 className="section-title">Deep foundational mastery in core science & computing.</h2>
             <p className="section-subtitle">
-              Explore our structured modules designed to bridge the gap between classroom theory and
-              practical software development.
+              Explore active tracks designed to bridge the gap between classroom theory and practical
+              technical competence.
             </p>
           </div>
 
           <div className="curriculum-showcase-box">
             <div className="curriculum-track-header">
               <div className="track-left">
-                <div className="track-badge">ACTIVE CURRICULUM</div>
-                <h3 className="track-title">Python Programming: Core Mechanics & Semantics</h3>
+                <div className="track-badge">5 ACTIVE TRACKS</div>
+                <h3 className="track-title">Python, Mathematics, Physics, Chemistry & Biology</h3>
                 <p className="track-desc">
-                  Covers the fundamental conceptual model of Python execution, memory allocation,
-                  scope resolution, and data structure behavior.
+                  Every active track contains 5-question objective diagnostics, structured lessons,
+                  and AI tutoring support.
                 </p>
               </div>
               <Button
@@ -499,38 +659,31 @@ export default function AuthPage({
                 size="sm"
                 onClick={() => focusAuth("register")}
               >
-                Enroll & Take Diagnostic
+                Enroll Free & Take Diagnostic
               </Button>
             </div>
 
             <div className="curriculum-topics-grid">
               <div className="topic-col">
                 <span className="topic-num">01</span>
-                <h4>Variables & Memory Aliasing</h4>
-                <p>Identity (`is`) vs Equality (`==`), variable referencing, and object IDs.</p>
+                <h4>Python Programming</h4>
+                <p>Default arg mutability, sequence slicing, hash invariance, and LEGB scope.</p>
               </div>
               <div className="topic-col">
                 <span className="topic-num">02</span>
-                <h4>The LEGB Scope Rule</h4>
-                <p>Local, Enclosing, Global, Built-in scope resolution and `global`/`nonlocal`.</p>
+                <h4>Mathematics</h4>
+                <p>Differential calculus, product/chain rules, matrix determinants, and probability.</p>
               </div>
               <div className="topic-col">
                 <span className="topic-num">03</span>
-                <h4>Mutability & Default Args</h4>
-                <p>Why mutable default parameters cause persistent state bugs between calls.</p>
+                <h4>Physics</h4>
+                <p>Work-energy theorem, kinematics, Coulomb's law, and thermodynamics.</p>
               </div>
               <div className="topic-col">
                 <span className="topic-num">04</span>
-                <h4>List & Dict Comprehensions</h4>
-                <p>Idiomatic transformations, nested conditionals, and memory efficiency.</p>
+                <h4>Chemistry & Biology</h4>
+                <p>VSEPR hybridization, Le Chatelier shifts, DNA Helicase, and nephron transport.</p>
               </div>
-            </div>
-
-            <div className="curriculum-upcoming-banner">
-              <span className="upcoming-label">UPCOMING EXPANSIONS:</span>
-              <span className="upcoming-pill">Data Structures & Complexity</span>
-              <span className="upcoming-pill">Web System Architecture</span>
-              <span className="upcoming-pill">Algorithms & Graph Traversal</span>
             </div>
           </div>
         </div>
@@ -543,7 +696,7 @@ export default function AuthPage({
             <span className="section-eyebrow">STUDENT IMPACT</span>
             <h2 className="section-title">Trusted by students proving their practical ability.</h2>
             <p className="section-subtitle">
-              Here is what learners and instructors have to say about the PragyaX diagnostic loop.
+              Real feedback from learners using the PragyaX diagnostic loop.
             </p>
           </div>
 
@@ -581,8 +734,8 @@ export default function AuthPage({
             <div className="testimonial-card">
               <Quote className="quote-icon" size={24} aria-hidden />
               <p className="quote-body">
-                "We recommend PragyaX to students preparing for practical coding labs. The verified
-                scorecards and diagnostic roadmaps make self-paced learning truly measurable."
+                "We recommend PragyaX to students preparing for practical labs. The verified scorecards
+                and diagnostic roadmaps make self-paced learning truly measurable."
               </p>
               <div className="quote-author">
                 <div className="author-avatar">DK</div>
@@ -599,7 +752,7 @@ export default function AuthPage({
       {/* Section G: Final Call to Action */}
       <section className="section-cta-banner">
         <div className="cta-banner-container">
-          <h2 className="cta-title">Ready to verify your practical programming skills?</h2>
+          <h2 className="cta-title">Make your next learning step count.</h2>
           <p className="cta-subtitle">
             Join PragyaX today. Free diagnostic evaluation, personalized AI tutoring, and verified
             skill scorecards.
@@ -623,7 +776,7 @@ export default function AuthPage({
         </div>
       </section>
 
-      {/* Section H: Comprehensive Modern SaaS Footer */}
+      {/* Section H: Comprehensive Modern SaaS Footer (PRESERVED & ENHANCED) */}
       <footer className="clean-footer">
         <div className="footer-container">
           <div className="footer-columns-grid">
@@ -664,10 +817,10 @@ export default function AuthPage({
               <h4 className="footer-heading">Curriculum Tracks</h4>
               <ul className="footer-links">
                 <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Python Foundation Track</a></li>
-                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>LEGB Function Scope</a></li>
-                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Object Mutability & Memory</a></li>
-                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Daily Code Breaker</a></li>
-                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Scorecard Analytics</a></li>
+                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Mathematics & Calculus</a></li>
+                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Physics & Mechanics</a></li>
+                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Chemistry Thermodynamics</a></li>
+                <li><a href="#curriculum" onClick={(e) => { e.preventDefault(); scrollToSection(curriculumRef); }}>Biology & Genetics</a></li>
               </ul>
             </div>
 
@@ -677,9 +830,9 @@ export default function AuthPage({
               <ul className="footer-links">
                 <li><a href="#account" onClick={(e) => { e.preventDefault(); focusAuth("login"); }}>Student Authentication</a></li>
                 <li><a href="#account" onClick={(e) => { e.preventDefault(); focusAuth("register"); }}>Account Registration</a></li>
-                <li><a href="#capabilities" onClick={(e) => { e.preventDefault(); scrollToSection(capabilitiesRef); }}>System Architecture</a></li>
-                <li><a href="#capabilities" onClick={(e) => { e.preventDefault(); scrollToSection(capabilitiesRef); }}>PBKDF2 Password Security</a></li>
-                <li><a href="#capabilities" onClick={(e) => { e.preventDefault(); scrollToSection(capabilitiesRef); }}>Academic Honor Code</a></li>
+                <li><a href="#features" onClick={(e) => { e.preventDefault(); scrollToSection(featuresRef); }}>Platform Capabilities</a></li>
+                <li><a href="#features" onClick={(e) => { e.preventDefault(); scrollToSection(featuresRef); }}>PBKDF2 Password Security</a></li>
+                <li><a href="#features" onClick={(e) => { e.preventDefault(); scrollToSection(featuresRef); }}>Academic Honor Code</a></li>
               </ul>
             </div>
           </div>

@@ -5,12 +5,24 @@ export type RoutePath =
   | "dashboard"
   | "chat"
   | "subjects"
+  | "syllabus"
+  | "roadmap"
+  | "lessons"
+  | "practice"
+  | "projects"
   | "assessment"
   | "results"
   | "result"
-  | "challenge";
+  | "challenge"
+  | "battles"
+  | "leaderboard"
+  | "competitions"
+  | "rewards"
+  | "profile"
+  | "verify"
+  | "admin";
 
-export type NavCategory = "core" | "practice" | "records";
+export type NavCategory = "core" | "practice" | "social" | "records" | "admin";
 
 export interface NavItem {
   readonly path: RoutePath;

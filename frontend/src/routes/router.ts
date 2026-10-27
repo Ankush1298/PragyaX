@@ -20,10 +20,22 @@ export function parseHashRoute(): ParsedRoute {
     "dashboard",
     "chat",
     "subjects",
+    "syllabus",
+    "roadmap",
+    "lessons",
+    "practice",
+    "projects",
     "assessment",
     "results",
     "result",
     "challenge",
+    "battles",
+    "leaderboard",
+    "competitions",
+    "rewards",
+    "profile",
+    "verify",
+    "admin",
   ];
 
   const path = rawPath && validPaths.includes(rawPath) ? rawPath : DEFAULT_ROUTE;

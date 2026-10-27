@@ -243,10 +243,21 @@ class Repository:
 
             # If score is >= 4, award high-scorer badge if not yet given
             if score >= 4:
+                badge_meta = {
+                    "subj_python": ("py_master", "Python Virtuoso", "Scored 80%+ on the Python Assessment"),
+                    "subj_math": ("math_master", "Mathematics Virtuoso", "Scored 80%+ on the Mathematics Assessment"),
+                    "subj_physics": ("physics_master", "Physics Virtuoso", "Scored 80%+ on the Physics Assessment"),
+                    "subj_chemistry": ("chem_master", "Chemistry Virtuoso", "Scored 80%+ on the Chemistry Assessment"),
+                    "subj_biology": ("bio_master", "Biology Virtuoso", "Scored 80%+ on the Biology Assessment"),
+                }
+                b_key, b_title, b_desc = badge_meta.get(
+                    subject_id,
+                    (f"{subject_id}_master", "Subject Virtuoso", "Scored 80%+ on assessment")
+                )
                 cursor.execute("""
                     INSERT OR IGNORE INTO user_badges (id, user_id, badge_key, title, description, icon)
-                    VALUES (?, ?, 'py_master', 'Python Virtuoso', 'Scored 80%+ on the 5-Question Python Assessment', 'award');
-                """, (f"bdg_{uuid.uuid4().hex[:8]}", user_id))
+                    VALUES (?, ?, ?, ?, ?, 'award');
+                """, (f"bdg_{uuid.uuid4().hex[:8]}", user_id, b_key, b_title, b_desc))
 
         return Repository.get_assessment_attempt_by_id(attempt_id, user_id)
 
@@ -324,18 +335,24 @@ class Repository:
 
         total_attempts = stats["total_attempts"] or 0
         avg_score = round(stats["avg_score"], 1) if stats["avg_score"] is not None else 0.0
-        latest_attempt = attempts[0] if attempts else None
+        # Filter attempts for the selected subject if available, or fall back to overall latest
+        subject_attempts = [a for a in attempts if a.get("subject_id") == selected_subject["id"]]
+        latest_attempt = subject_attempts[0] if subject_attempts else (attempts[0] if attempts else None)
 
-        # Recommendations come from the latest saved attempt; before any attempt we show a labelled starter list.
+        # Recommendations come from the latest saved attempt for this subject; before any attempt we show subject starter topics.
         if latest_attempt:
             recommended_topics = latest_attempt.get("recommended_topics", [])
             recommendations_source = "latest_assessment"
         else:
-            recommended_topics = [
-                "Python variables, types and mutability",
-                "Lists, tuples, dictionaries and slicing",
-                "Functions and variable scope (LEGB)"
-            ]
+            slug = selected_subject.get("slug", "python")
+            starters = {
+                "python": ["Python variables, types and mutability", "Lists, tuples, dictionaries and slicing", "Functions and variable scope (LEGB)"],
+                "math": ["Algebraic equations & exponents", "Derivatives & calculus foundations", "Trigonometric ratios & identities"],
+                "physics": ["Kinematics & Newton's laws of motion", "Circuit laws & parallel resistance", "Conservation of mechanical energy"],
+                "chemistry": ["Electron configurations & atomic orbitals", "VSEPR theory & molecular geometry", "Le Chatelier's equilibrium principle"],
+                "biology": ["Cell organelles & protein trafficking", "DNA replication & key enzymes", "Nephron physiology & reabsorption"]
+            }
+            recommended_topics = starters.get(slug, [f"Core foundations of {selected_subject.get('title', 'the subject')}", "Diagnostic practice questions", "Core problem solving"])
             recommendations_source = "starter"
 
         return {

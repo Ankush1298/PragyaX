@@ -343,17 +343,70 @@ STARTER_FOLLOWUPS = [
 
 # Maps an assessment question topic to a concrete next lesson.
 TOPIC_RECOMMENDATIONS = {
+    # Python
     "Default Parameter Evaluation & Mutability": "Mutable vs immutable objects and safe default arguments",
     "Sequence Slicing & Negative Steps": "Sequence slicing with start/stop/step and negative indices",
     "Hash Tables, Mutability & Dictionary Keys": "Dictionaries, hashing and why keys must be immutable",
     "List Comprehensions vs Generator Expressions": "Generators and lazy evaluation vs list comprehensions",
     "LEGB Variable Scope & Closures": "Variable scope (LEGB), closures and the nonlocal keyword",
+    # Mathematics
+    "Algebra": "Solving exponential and polynomial equations",
+    "Calculus": "Derivatives, product rule and rate-of-change applications",
+    "Trigonometry": "Trigonometric identities and double-angle formulas",
+    "Linear Algebra": "Matrix determinants, inverses, and vector transformations",
+    "Probability & Statistics": "Combinatorics, theoretical probability, and distributions",
+    # Physics
+    "Mechanics & Kinematics": "Kinematic equations and uniform accelerated motion",
+    "Electricity & Magnetism": "Ohm's law, circuit analysis and parallel networks",
+    "Work, Energy & Power": "Conservation of mechanical energy and work-energy theorem",
+    "Thermodynamics": "First law of thermodynamics and isothermal gas processes",
+    "Waves & Oscillations": "Wave propagation, acoustics and medium boundary properties",
+    # Chemistry
+    "Atomic Structure & Orbitals": "Aufbau exceptions, electronic configurations and Hund's rule",
+    "Chemical Bonding & Molecular Geometry": "VSEPR molecular geometry and hybridization schemes",
+    "Chemical Equilibrium & Le Chatelier": "Dynamic equilibrium and Le Chatelier principle shifts",
+    "Acids, Bases & pH Calculations": "Strong base dissociations, [OH-] and logarithmic pH/pOH",
+    "Chemical Thermodynamics": "Gibbs free energy (ΔG = ΔH - TΔS) and reaction spontaneity",
+    # Biology
+    "Cell Biology & Organelles": "Endomembrane system, Golgi sorting and vesicle trafficking",
+    "Genetics & Molecular Biology": "DNA replication enzymes, helicase and fork mechanics",
+    "Human Physiology & Renal System": "Nephron microanatomy and tubular transport mechanisms",
+    "Plant Biology & Photosynthesis": "Light-dependent photolysis and Photosystem II energetics",
+    "Evolution & Ecology": "Genetic drift, allele frequency shifts and population genetics",
+}
+
+SUBJECT_ADVANCED_RECOMMENDATIONS = {
+    "Python Programming": [
+        "Decorators and functools.wraps",
+        "Iterators, generators and itertools",
+        "Async programming with asyncio",
+    ],
+    "Mathematics": [
+        "Multivariable calculus and partial derivatives",
+        "Eigenvalues, eigenvectors and matrix diagonalization",
+        "Bayesian inference and stochastic modeling",
+    ],
+    "Physics": [
+        "Lagrangian mechanics and generalized coordinates",
+        "Maxwell equations and electromagnetic wave equations",
+        "Quantum mechanics: wave functions and Schrodinger equation",
+    ],
+    "Chemistry": [
+        "Transition metal coordination complexes & crystal field theory",
+        "Reaction kinetics, rate laws and Arrhenius mechanisms",
+        "Spectroscopic methods (NMR, IR, UV-Vis identification)",
+    ],
+    "Biology": [
+        "CRISPR-Cas9 gene editing and recombinant DNA technology",
+        "Signal transduction cascades and G-protein coupled receptors",
+        "Immunology: T-cell selection and humoral antibody response",
+    ],
 }
 
 ADVANCED_RECOMMENDATIONS = [
-    "Decorators and functools.wraps",
-    "Iterators, generators and itertools",
-    "Async programming with asyncio",
+    "Advanced algorithmic analysis",
+    "Comprehensive domain case studies",
+    "Research-grade problem sets",
 ]
 
 # Deterministic proficiency thresholds (score out of 5):
@@ -443,7 +496,7 @@ class MockAIProvider(BaseAIProvider):
             if is_correct:
                 score += 1
             else:
-                missed_topics.append(q.get("topic", "Python fundamentals"))
+                missed_topics.append(q.get("topic", f"{subject} concepts"))
 
             breakdown.append({
                 "question_id": q["id"],
@@ -452,7 +505,7 @@ class MockAIProvider(BaseAIProvider):
                 "correct_option": correct,
                 "is_correct": is_correct,
                 "explanation": q.get("explanation", ""),
-                "topic": q.get("topic", "Python fundamentals"),
+                "topic": q.get("topic", f"{subject} concepts"),
             })
 
         percentage = round(score / total * 100, 1) if total else 0.0
@@ -468,7 +521,8 @@ class MockAIProvider(BaseAIProvider):
             summary = (f"You scored {score}/{total} ({percentage}%). Start with the recommended topics below, "
                        "then use the Learning Chat to practise each concept before retaking the assessment.")
 
-        recommended = [TOPIC_RECOMMENDATIONS.get(t, f"Review: {t}") for t in missed_topics] or ADVANCED_RECOMMENDATIONS
+        subject_adv = SUBJECT_ADVANCED_RECOMMENDATIONS.get(subject, ADVANCED_RECOMMENDATIONS)
+        recommended = [TOPIC_RECOMMENDATIONS.get(t, f"Review: {t}") for t in missed_topics] or subject_adv
 
         return {
             "score": score,
