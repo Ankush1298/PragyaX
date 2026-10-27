@@ -6,6 +6,7 @@ Owned by: Nagin (Supabase Database Architecture) & Arsh (Backend)
 
 import json
 import uuid
+from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Any, Optional
 from .connection import get_db
 from ..config import settings
@@ -52,12 +53,17 @@ class Repository:
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT OR REPLACE INTO active_sessions (token, user_id)
-                VALUES (?, ?);
+                INSERT INTO active_sessions (token, user_id)
+                VALUES (?, ?)
+                ON CONFLICT (token) DO UPDATE SET
+                    user_id = EXCLUDED.user_id,
+                    created_at = CURRENT_TIMESTAMP;
             """, (token, user_id))
 
     @staticmethod
     def get_user_by_token(token: str) -> Optional[Dict[str, Any]]:
+        cutoff = datetime.now(timezone.utc) - timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -65,8 +71,8 @@ class Repository:
                 FROM active_sessions s
                 JOIN users u ON s.user_id = u.id
                 WHERE s.token = ?
-                  AND s.created_at >= datetime('now', ?);
-            """, (token, f"-{settings.ACCESS_TOKEN_EXPIRE_MINUTES} minutes"))
+                  AND s.created_at >= ?;
+            """, (token, cutoff_str))
             row = cursor.fetchone()
             return dict(row) if row else None
 
@@ -153,17 +159,15 @@ class Repository:
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT * FROM (
-                    SELECT rowid AS seq, id, user_id, subject, role, content, suggested_followups, created_at
-                    FROM chat_messages
-                    WHERE user_id = ?
-                    ORDER BY rowid DESC
-                    LIMIT ?
-                ) ORDER BY seq ASC;
+                SELECT id, user_id, subject, role, content, suggested_followups, created_at
+                FROM chat_messages
+                WHERE user_id = ?
+                ORDER BY created_at DESC, id DESC
+                LIMIT ?;
             """, (user_id, limit))
             rows = cursor.fetchall()
             result = []
-            for r in rows:
+            for r in reversed(rows):
                 item = dict(r)
                 item["suggested_followups"] = json.loads(item["suggested_followups"]) if item.get("suggested_followups") else []
                 result.append(item)
@@ -255,8 +259,9 @@ class Repository:
                     (f"{subject_id}_master", "Subject Virtuoso", "Scored 80%+ on assessment")
                 )
                 cursor.execute("""
-                    INSERT OR IGNORE INTO user_badges (id, user_id, badge_key, title, description, icon)
-                    VALUES (?, ?, ?, ?, ?, 'award');
+                    INSERT INTO user_badges (id, user_id, badge_key, title, description, icon)
+                    VALUES (?, ?, ?, ?, ?, 'award')
+                    ON CONFLICT (user_id, badge_key) DO NOTHING;
                 """, (f"bdg_{uuid.uuid4().hex[:8]}", user_id, b_key, b_title, b_desc))
 
         return Repository.get_assessment_attempt_by_id(attempt_id, user_id)
@@ -292,7 +297,7 @@ class Repository:
                 FROM assessment_attempts a
                 JOIN subjects s ON a.subject_id = s.id
                 WHERE a.user_id = ?
-                ORDER BY a.created_at DESC, a.rowid DESC
+                ORDER BY a.created_at DESC, a.id DESC
                 LIMIT ?;
             """, (user_id, limit))
             rows = cursor.fetchall()
@@ -432,13 +437,14 @@ class Repository:
                     id, user_id, challenge_id, submitted_answer, is_correct, points_awarded
                 )
                 VALUES (?, ?, ?, ?, ?, ?);
-            """, (sub_id, user_id, challenge_id, selected_option.strip().upper(), 1 if is_correct else 0, points))
+            """, (sub_id, user_id, challenge_id, selected_option.strip().upper(), bool(is_correct), points))
 
             # If correct, award daily solver badge
             if is_correct:
                 cursor.execute("""
-                    INSERT OR IGNORE INTO user_badges (id, user_id, badge_key, title, description, icon)
-                    VALUES (?, ?, 'daily_striker', 'Daily Code Breaker', 'Solved today''s Python code snippet challenge', 'zap');
+                    INSERT INTO user_badges (id, user_id, badge_key, title, description, icon)
+                    VALUES (?, ?, 'daily_striker', 'Daily Code Breaker', 'Solved today''s Python code snippet challenge', 'zap')
+                    ON CONFLICT (user_id, badge_key) DO NOTHING;
                 """, (f"bdg_{uuid.uuid4().hex[:8]}", user_id))
 
             return {
@@ -461,3 +467,65 @@ class Repository:
             """, (user_id,))
             rows = cursor.fetchall()
             return [dict(r) for r in rows]
+
+    # ==========================
+    # 7. ROADMAP PROGRESS PERSISTENCE
+    # ==========================
+
+    @staticmethod
+    def get_user_completed_modules(user_id: str, subject_id: str = "subj_python") -> List[str]:
+        """
+        Retrieves all completed module IDs for a user and subject.
+        Returns a list of module IDs.
+        """
+        with get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT module_id
+                FROM user_roadmap_progress
+                WHERE user_id = ? AND subject_id = ? AND status = 'completed'
+                ORDER BY completed_at ASC;
+            """, (user_id, subject_id))
+            rows = cursor.fetchall()
+            return [r["module_id"] for r in rows]
+
+    @staticmethod
+    def save_module_completion(user_id: str, subject_id: str, module_id: str) -> Dict[str, Any]:
+        """
+        Idempotently persists completion of a roadmap module for a user.
+        Preserves original completed_at timestamp if already completed.
+        Returns dict with progress details.
+        """
+        with get_db() as conn:
+            cursor = conn.cursor()
+            # Check if record already exists
+            cursor.execute("""
+                SELECT id, user_id, subject_id, module_id, status, completed_at
+                FROM user_roadmap_progress
+                WHERE user_id = ? AND subject_id = ? AND module_id = ?;
+            """, (user_id, subject_id, module_id))
+            existing = cursor.fetchone()
+            if existing:
+                return dict(existing)
+
+            progress_id = f"prog_{uuid.uuid4().hex[:12]}"
+            cursor.execute("""
+                INSERT INTO user_roadmap_progress (
+                    id, user_id, subject_id, module_id, status
+                )
+                VALUES (?, ?, ?, ?, 'completed')
+                ON CONFLICT (user_id, subject_id, module_id) DO NOTHING;
+            """, (progress_id, user_id, subject_id, module_id))
+
+            cursor.execute("""
+                SELECT id, user_id, subject_id, module_id, status, completed_at
+                FROM user_roadmap_progress
+                WHERE user_id = ? AND subject_id = ? AND module_id = ?;
+            """, (user_id, subject_id, module_id))
+            saved = cursor.fetchone()
+            if not saved:
+                raise RuntimeError(
+                    f"Persistence failure: completion record for module '{module_id}' "
+                    f"(user '{user_id}', subject '{subject_id}') could not be verified after insert."
+                )
+            return dict(saved)

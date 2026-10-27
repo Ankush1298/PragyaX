@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .database.connection import init_db
+from .database.connection import init_db, close_db_pool
 from .routers import (
     health_router,
     auth_router,
@@ -15,16 +15,25 @@ from .routers import (
     chat_router,
     assessments_router,
     dashboard_router,
-    challenges_router
+    challenges_router,
+    roadmap_router,
+    battles_router,
+    competitions_router,
+    referrals_router,
+    certificates_router,
+    gamification_router,
+    admin_competitions_router
 )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize SQLite database and seed initial data on startup
+    # Initialize database (PostgreSQL connection pool or SQLite) on startup
     init_db()
-    print("PragyaX Database Initialized with persistent SQLite storage.")
-    yield
+    try:
+        yield
+    finally:
+        close_db_pool()
 
 
 app = FastAPI(
@@ -53,6 +62,13 @@ app.include_router(chat_router, prefix=settings.API_PREFIX)
 app.include_router(assessments_router, prefix=settings.API_PREFIX)
 app.include_router(dashboard_router, prefix=settings.API_PREFIX)
 app.include_router(challenges_router, prefix=settings.API_PREFIX)
+app.include_router(roadmap_router, prefix=settings.API_PREFIX)
+app.include_router(battles_router, prefix=settings.API_PREFIX)
+app.include_router(competitions_router, prefix=settings.API_PREFIX)
+app.include_router(referrals_router, prefix=settings.API_PREFIX)
+app.include_router(certificates_router, prefix=settings.API_PREFIX)
+app.include_router(gamification_router, prefix=settings.API_PREFIX)
+app.include_router(admin_competitions_router, prefix=settings.API_PREFIX)
 
 
 @app.get("/")
