@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .database.connection import init_db
+from .database.connection import init_db, close_db_pool
 from .routers import (
     health_router,
     auth_router,
@@ -21,10 +21,12 @@ from .routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize SQLite database and seed initial data on startup
+    # Initialize database (PostgreSQL connection pool or SQLite) on startup
     init_db()
-    print("PragyaX Database Initialized with persistent SQLite storage.")
-    yield
+    try:
+        yield
+    finally:
+        close_db_pool()
 
 
 app = FastAPI(

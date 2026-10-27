@@ -21,10 +21,11 @@ import tempfile
 import pytest
 from fastapi.testclient import TestClient
 
-# Point test db to an isolated sqlite database (never touches the demo pragyax.db)
 test_db_path = os.path.join(tempfile.mkdtemp(prefix="pragyax_test_"), "test.db")
 
-os.environ["DATABASE_PATH"] = test_db_path
+from backend.app.config import settings
+settings.DATABASE_URL = None
+settings.DATABASE_PATH = test_db_path
 os.environ["AI_PROVIDER"] = "mock"
 
 from backend.app.main import app
