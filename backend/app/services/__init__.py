@@ -27,5 +27,20 @@ __all__ = [
     "validate_catalog_integrity",
     "SubjectCatalogComingSoonError",
     "SUBJECT_CATALOGS",
-    "SUPPORTED_SUBJECTS"
+    "SUPPORTED_SUBJECTS",
+    "ChallengeService",
+    "BattleService",
+    "HostedCompetitionService",
+    "ReferralService",
+    "CertificateService",
+    "GamificationHub",
+    "AdminCompetitionService"
 ]
+
+from .challenge_service import ChallengeService
+from .battle_service import BattleService
+from .hosted_competition_service import HostedCompetitionService
+from .referral_service import ReferralService
+from .certificate_service import CertificateService
+from .gamification_hub import GamificationHub
+from .admin_competition_service import AdminCompetitionService

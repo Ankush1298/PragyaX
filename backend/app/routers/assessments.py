@@ -130,6 +130,39 @@ def submit_assessment(payload: AssessmentSubmitRequest, user: dict = Depends(get
         breakdown=eval_result["breakdown"]
     )
 
+    # 5. Gamification & Referral qualification
+    try:
+        from ..database.competition_repository import CompetitionRepository
+        from ..services.referral_service import ReferralService
+        from ..services.certificate_service import CertificateService
+
+        # Record XP in unified ledger
+        pts = 50 + (50 if eval_result["percentage"] >= 80 else 0)
+        CompetitionRepository.record_xp_event(
+            user_id=user["id"],
+            event_key=f"assessment.{attempt['id']}",
+            points=pts,
+            reason=f"Completed {subject['title']} Assessment",
+            source_type="assessment",
+            source_id=attempt["id"]
+        )
+
+        # Trigger referral qualification if referee had pending referral
+        ReferralService.check_and_qualify_referral(user["id"], "assessment")
+
+        # Issue certificate if score >= 80%
+        if eval_result["percentage"] >= 80:
+            CertificateService.issue_certificate(
+                user_id=user["id"],
+                user_name=user.get("name", "Student"),
+                cert_type="ASSESSMENT",
+                title=f"{subject['title']} Excellence Certificate",
+                description=f"Scored {eval_result['percentage']}% ({eval_result['score']}/{eval_result['total']}) in {subject['title']} assessment",
+                metadata={"assessment_id": attempt["id"], "percentage": eval_result["percentage"]}
+            )
+    except Exception:
+        pass
+
     return {
         "id": attempt["id"],
         "user_id": user["id"],
