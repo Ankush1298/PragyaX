@@ -198,9 +198,14 @@ export default function AuthPage({
               <span>AI-Powered Practical Learning</span>
             </div>
 
-            <h1 className="clean-hero-headline">
-              Learn with direction. <span className="text-gradient">Progress with confidence.</span>
-            </h1>
+        <h1 className="hero-headline">
+          <span className="hero-headline-line">
+            Learn with direction.
+          </span>
+          <span className="hero-headline-line">
+            <em>Progress with confidence.</em>
+          </span>
+        </h1>
 
             <p className="clean-hero-lead">
               Choose your subject, upload your syllabus or enter a topic, and build a learning
